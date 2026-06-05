@@ -6,11 +6,14 @@ import About from './components/About'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import VerifyCode from './pages/VerifyCode'
+import NewPassword from './pages/NewPassword'
 import Dashboard from './pages/Dashboard'
 import Registration from './pages/Registration'
 import './index.css'
 
-// Pages: 'landing' | 'login' | 'dashboard'
+// Pages: 'landing' | 'login' | 'dashboard' | 'forgot-password' | 'verify-code' | 'new-password'
 function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState(null)
@@ -30,6 +33,33 @@ function App() {
       <Login
         onLogin={handleLogin}
         onBack={() => setPage('landing')}
+        onForgotPassword={() => setPage('forgot-password')}
+      />
+    )
+  }
+
+  if (page === 'forgot-password') {
+    return (
+      <ForgotPassword
+        onBackToLogin={() => setPage('login')}
+        onSubmitSuccess={() => setPage('verify-code')}
+      />
+    )
+  }
+
+  if (page === 'verify-code') {
+    return (
+      <VerifyCode
+        onVerifySuccess={() => setPage('new-password')}
+        onChangeEmail={() => setPage('forgot-password')}
+      />
+    )
+  }
+
+  if (page === 'new-password') {
+    return (
+      <NewPassword
+        onSubmitSuccess={() => setPage('login')}
       />
     )
   }
