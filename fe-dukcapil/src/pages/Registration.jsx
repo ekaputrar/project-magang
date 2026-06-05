@@ -14,33 +14,42 @@ const Registration = ({ onBack }) => {
     cv: []
   })
 
+  // ── State Form Data Diri ──────────────────────────────────────────────────────
+  const [formData, setFormData] = useState({
+    nama: '',
+    noHp: '',
+    email: '',
+    asalInstansi: '',
+    bidangTujuan: '',
+    tanggalMulai: '',
+    tanggalSelesai: '',
+  })
+
   const fileInputRef = useRef(null)
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    // Reset value so same file can be selected again
     e.target.value = null;
-
     if (isUploading) return;
     setIsUploading(true);
     setUploadProgress(0);
-
-    // Calculate file size in MB or KB
     let sizeText = '';
     if (file.size < 1024 * 1024) {
       sizeText = Math.max(1, Math.round(file.size / 1024)) + ' KB';
     } else {
       sizeText = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     }
-    
     let progress = 0;
     const interval = setInterval(() => {
       progress += Math.floor(Math.random() * 20) + 10;
       if (progress > 100) progress = 100;
       setUploadProgress(progress);
-      
       if (progress >= 100) {
         clearInterval(interval);
         setTimeout(() => {
@@ -54,15 +63,8 @@ const Registration = ({ onBack }) => {
     }, 300);
   }
 
-  const openUploadModal = (field) => {
-    setActiveUploadField(field)
-  }
-
-  const closeUploadModal = () => {
-    setActiveUploadField(null)
-    setIsUploading(false)
-  }
-
+  const openUploadModal = (field) => { setActiveUploadField(field) }
+  const closeUploadModal = () => { setActiveUploadField(null); setIsUploading(false) }
   const removeFile = (indexToRemove) => {
     setUploadedFiles(prev => ({
       ...prev,
@@ -75,7 +77,6 @@ const Registration = ({ onBack }) => {
     const hasFiles = files.length > 0;
     const displayText = hasFiles ? files[files.length - 1].name : defaultText;
     const textColor = hasFiles ? "text-gray-800 font-bold" : "text-gray-600";
-
     return (
       <div className="flex flex-col gap-1 mt-1">
         <label className="text-white text-[11px] font-bold ml-1">{label}</label>
@@ -89,11 +90,82 @@ const Registration = ({ onBack }) => {
 
   const handleNext = (e) => {
     e.preventDefault()
+    // Validasi step 1
+    if (step === 1) {
+      if (!formData.nama.trim() || !formData.asalInstansi.trim()) {
+        alert('Nama dan Asal Instansi wajib diisi!')
+        return
+      }
+    }
     if (step < 3) setStep(step + 1)
   }
 
+  // ── Simpan data ke localStorage saat submit ───────────────────────────────────
   const handleSimpan = (e) => {
     e.preventDefault()
+
+    // Format periode dari tanggal mulai & selesai
+    const formatDate = (dateStr) => {
+      if (!dateStr) return ''
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+    }
+
+    const tglMulai  = formatDate(formData.tanggalMulai)
+    const tglSelesai = formatDate(formData.tanggalSelesai)
+
+    // Hitung durasi dalam bulan
+    let durasiText = '-'
+    if (formData.tanggalMulai && formData.tanggalSelesai) {
+      const start = new Date(formData.tanggalMulai)
+      const end   = new Date(formData.tanggalSelesai)
+      const months = Math.round((end - start) / (1000 * 60 * 60 * 24 * 30))
+      durasiText = months > 0 ? `${months} Bulan` : '< 1 Bulan'
+    }
+
+    const colors = ['bg-blue-500', 'bg-pink-500', 'bg-teal-500', 'bg-purple-500', 'bg-indigo-500']
+    const initials = formData.nama.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
+    const newPeserta = {
+      id: String(Date.now()),
+      name: formData.nama,
+      identifier: formData.email ? `Email: ${formData.email}` : 'Peserta Baru',
+      initials,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      // Field sesuai form pendaftaran
+      nama: formData.nama,
+      noHp: formData.noHp,
+      email: formData.email,
+      asalInstansi: formData.asalInstansi,
+      bidangTujuan: formData.bidangTujuan,
+      tanggalMulai: formData.tanggalMulai,
+      tanggalSelesai: formData.tanggalSelesai,
+      // Field turunan untuk tabel admin
+      instansi: formData.asalInstansi,
+      penempatan: formData.bidangTujuan,
+      telepon: formData.noHp,
+      periode: tglMulai && tglSelesai ? `${tglMulai} - ${tglSelesai}` : '-',
+      durasi: durasiText,
+      status: 'Pending',
+      // Berkas yang diupload
+      berkas: {
+        surat_pengantar: uploadedFiles.surat_pengantar,
+        proposal: uploadedFiles.proposal,
+        portofolio: uploadedFiles.portofolio,
+        cv: uploadedFiles.cv,
+      },
+      tanggalDaftar: new Date().toISOString(),
+    }
+
+    // Simpan ke localStorage — admin akan membacanya
+    try {
+      const existing = JSON.parse(localStorage.getItem('pendaftaran_magang') || '[]')
+      existing.unshift(newPeserta) // terbaru di atas
+      localStorage.setItem('pendaftaran_magang', JSON.stringify(existing))
+    } catch (err) {
+      console.error('Gagal menyimpan data:', err)
+    }
+
     setShowSuccess(true)
   }
 
@@ -138,31 +210,72 @@ const Registration = ({ onBack }) => {
       <div className="bg-[#2445a6] w-full max-w-[480px] rounded-[16px] p-6 sm:p-8 shadow-xl">
         <form className="flex flex-col gap-3">
 
+          {/* Step 1 & 3: Data Diri */}
           {(step === 1 || step === 3) && (
             <>
               <div className="flex flex-col gap-1">
-                <label className="text-white text-[11px] font-bold ml-1">Nama</label>
-                <input type="text" className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800" />
+                <label className="text-white text-[11px] font-bold ml-1">Nama <span className="text-red-300">*</span></label>
+                <input
+                  type="text"
+                  name="nama"
+                  value={formData.nama}
+                  onChange={handleFormChange}
+                  readOnly={step === 3}
+                  placeholder="Masukkan nama lengkap"
+                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-white text-[11px] font-bold ml-1">Nomor Handphone</label>
-                <input type="text" className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800" />
+                <input
+                  type="tel"
+                  name="noHp"
+                  value={formData.noHp}
+                  onChange={handleFormChange}
+                  readOnly={step === 3}
+                  placeholder="08xxxxxxxxxx"
+                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-white text-[11px] font-bold ml-1">Email</label>
-                <input type="email" className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleFormChange}
+                  readOnly={step === 3}
+                  placeholder="email@contoh.com"
+                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-white text-[11px] font-bold ml-1">Asal Instansi</label>
-                <input type="text" className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800" />
+                <label className="text-white text-[11px] font-bold ml-1">Asal Instansi <span className="text-red-300">*</span></label>
+                <input
+                  type="text"
+                  name="asalInstansi"
+                  value={formData.asalInstansi}
+                  onChange={handleFormChange}
+                  readOnly={step === 3}
+                  placeholder="Universitas / Sekolah asal"
+                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-white text-[11px] font-bold ml-1">Bidang Tujuan</label>
-                <input type="text" className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800" />
+                <input
+                  type="text"
+                  name="bidangTujuan"
+                  value={formData.bidangTujuan}
+                  onChange={handleFormChange}
+                  readOnly={step === 3}
+                  placeholder="Bidang yang dituju"
+                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                />
               </div>
 
               <div className="flex gap-4">
@@ -172,7 +285,14 @@ const Registration = ({ onBack }) => {
                     <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
                     </div>
-                    <input type="date" className="w-full h-9 pl-8 pr-3 rounded-md border-none outline-none text-sm text-black bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0" />
+                    <input
+                      type="date"
+                      name="tanggalMulai"
+                      value={formData.tanggalMulai}
+                      onChange={handleFormChange}
+                      readOnly={step === 3}
+                      className="w-full h-9 pl-8 pr-3 rounded-md border-none outline-none text-sm text-black bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0"
+                    />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
@@ -181,13 +301,21 @@ const Registration = ({ onBack }) => {
                     <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
                     </div>
-                    <input type="date" className="w-full h-9 pl-8 pr-3 rounded-md border-none outline-none text-sm text-black bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0" />
+                    <input
+                      type="date"
+                      name="tanggalSelesai"
+                      value={formData.tanggalSelesai}
+                      onChange={handleFormChange}
+                      readOnly={step === 3}
+                      className="w-full h-9 pl-8 pr-3 rounded-md border-none outline-none text-sm text-black bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0"
+                    />
                   </div>
                 </div>
               </div>
             </>
           )}
 
+          {/* Step 2 & 3: Upload Berkas */}
           {(step === 2 || step === 3) && (
             <>
               {renderUploadInput('surat_pengantar', 'Surat Pengantar Magang', 'File Surat Pengantar Magang')}
@@ -234,7 +362,7 @@ const Registration = ({ onBack }) => {
               Data diri peserta magang berhasil disimpan. Silahkan <span className="font-bold">Lanjut</span> dan menunggu konfirmasi dari admin.
             </p>
             <button 
-              onClick={() => setShowSuccess(false)}
+              onClick={() => { setShowSuccess(false); if (onBack) onBack(); }}
               className="bg-[#0b5cce] hover:bg-blue-800 transition-colors text-white font-bold py-2.5 w-[75%] rounded-[10px] text-sm shadow-sm"
             >
               Lanjut
@@ -267,8 +395,6 @@ const Registration = ({ onBack }) => {
 
             {/* File List */}
             <div className="flex flex-col gap-5 mb-8">
-              
-              {/* Active Upload */}
               {isUploading && (
                 <div className="flex items-center justify-between">
                   <div className="flex items-start gap-4 w-full pr-4">
@@ -288,7 +414,6 @@ const Registration = ({ onBack }) => {
                 </div>
               )}
 
-              {/* Completed Files */}
               {uploadedFiles[activeUploadField].map((file, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-start gap-4">
@@ -308,7 +433,6 @@ const Registration = ({ onBack }) => {
                   </button>
                 </div>
               ))}
-
             </div>
 
             {/* Actions */}

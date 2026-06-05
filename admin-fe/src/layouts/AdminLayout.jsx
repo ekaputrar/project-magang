@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -13,6 +13,17 @@ import {
 } from 'lucide-react';
 
 const AdminLayout = () => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      alert(`Mencari: ${searchQuery}`);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#f8f9fb] font-poppins overflow-hidden">
       {/* Sidebar */}
@@ -107,20 +118,99 @@ const AdminLayout = () => {
             <input 
               type="text" 
               placeholder="Cari nama peserta, instansi, atau surat..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearching(true)}
+              onBlur={() => setTimeout(() => setIsSearching(false), 200)}
+              onKeyDown={handleSearch}
               className="w-full bg-gray-50 border border-gray-100 text-sm rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-colors"
             />
+            {isSearching && searchQuery.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-lg z-50 p-2">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500">Hasil Pencarian untuk "{searchQuery}"</div>
+                <div className="px-3 py-2 hover:bg-blue-50 cursor-pointer rounded-lg text-sm text-gray-700 transition-colors" onClick={() => alert('Membuka profil: Budi Santoso')}>
+                  <p className="font-medium text-blue-600">Budi Santoso</p>
+                  <p className="text-xs text-gray-500">Peserta Magang - Universitas Brawijaya</p>
+                </div>
+                <div className="px-3 py-2 hover:bg-blue-50 cursor-pointer rounded-lg text-sm text-gray-700 transition-colors mt-1" onClick={() => alert('Membuka surat: Surat Tugas #1234')}>
+                  <p className="font-medium text-blue-600">Surat Tugas #1234</p>
+                  <p className="text-xs text-gray-500">Pendampingan Peserta Magang</p>
+                </div>
+                <div className="px-3 py-2 hover:bg-blue-50 cursor-pointer rounded-lg text-sm text-gray-700 transition-colors mt-1" onClick={() => alert('Membuka instansi: Diskominfo Sidoarjo')}>
+                  <p className="font-medium text-blue-600">Diskominfo Sidoarjo</p>
+                  <p className="text-xs text-gray-500">Instansi / Penempatan</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-6">
-            <button className="text-gray-400 hover:text-gray-600 transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full border border-white"></span>
-            </button>
+            <div className="relative">
+              <button 
+                className="text-gray-400 hover:text-gray-600 transition-colors relative"
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setShowProfileMenu(false);
+                }}
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full border border-white"></span>
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 className="font-semibold text-gray-800 text-sm">Notifikasi</h3>
+                    <span className="text-xs text-blue-600 hover:underline cursor-pointer" onClick={() => alert('Semua notifikasi ditandai sudah dibaca')}>Tandai sudah dibaca</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => alert('Membuka detail peserta')}>
+                      <p className="text-sm font-medium text-gray-800">Peserta Baru Mendaftar</p>
+                      <p className="text-xs text-gray-500 mt-1">Siti Aminah dari UPN Veteran Jatim telah mendaftar.</p>
+                      <p className="text-xs text-gray-400 mt-2">5 menit yang lalu</p>
+                    </div>
+                    <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => alert('Membuka form laporan')}>
+                      <p className="text-sm font-medium text-gray-800">Laporan Bulanan</p>
+                      <p className="text-xs text-gray-500 mt-1">Waktunya mengisi laporan evaluasi peserta magang.</p>
+                      <p className="text-xs text-gray-400 mt-2">1 jam yang lalu</p>
+                    </div>
+                  </div>
+                  <div className="p-2 border-t border-gray-100 text-center bg-gray-50">
+                    <button className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors" onClick={() => alert('Membuka semua notifikasi')}>Lihat Semua</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="h-6 w-px bg-gray-200"></div>
-            <button className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-              Admin Sidoarjo
-              <ChevronDown className="w-4 h-4 ml-2 text-gray-400" />
-            </button>
+
+            <div className="relative">
+              <button 
+                className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                onClick={() => {
+                  setShowProfileMenu(!showProfileMenu);
+                  setShowNotifications(false);
+                }}
+              >
+                Admin Sidoarjo
+                <ChevronDown className="w-4 h-4 ml-2 text-gray-400" />
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-3 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-50 py-2">
+                  <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                    <p className="text-sm font-semibold text-gray-800">Admin Sidoarjo</p>
+                    <p className="text-xs text-gray-500">admin@sidoarjo.go.id</p>
+                  </div>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center" onClick={() => alert('Membuka Pengaturan')}>
+                    <Settings className="w-4 h-4 mr-2" /> Pengaturan
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center" onClick={() => alert('Proses Keluar')}>
+                    <LogOut className="w-4 h-4 mr-2" /> Keluar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
