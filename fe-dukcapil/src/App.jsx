@@ -6,13 +6,14 @@ import About from './components/About'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import VerifyCode from './pages/VerifyCode'
 import NewPassword from './pages/NewPassword'
 import Dashboard from './pages/Dashboard'
 import './index.css'
 
-// Pages: 'landing' | 'login' | 'dashboard' | 'forgot-password' | 'verify-code' | 'new-password'
+// Pages: 'landing' | 'login' | 'dashboard' | 'forgot-password' | 'verify-code' | 'new-password' | 'register'
 function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState(null)
@@ -33,6 +34,15 @@ function App() {
         onLogin={handleLogin}
         onBack={() => setPage('landing')}
         onForgotPassword={() => setPage('forgot-password')}
+        onRegister={() => setPage('register')}
+      />
+    )
+  }
+
+  if (page === 'register') {
+    return (
+      <Register
+        onBackToLogin={() => setPage('login')}
       />
     )
   }

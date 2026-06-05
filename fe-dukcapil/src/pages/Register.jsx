@@ -1,11 +1,16 @@
 import React, { useState } from 'react'
 
-const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
-  const [form, setForm] = useState({ username: '', password: '' })
+const Register = ({ onBackToLogin }) => {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: ''
+  })
+  const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showPass, setShowPass] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [success, setSuccess] = useState('')
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -14,31 +19,48 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.username || !form.password) {
-      setError('Email dan password harus diisi.')
+    if (!form.name || !form.email || !form.phone || !form.password) {
+      setError('Semua kolom wajib diisi.')
       return
     }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      setError('Format email tidak valid.')
+      return
+    }
+
+    // Basic phone validation (digits and min length)
+    const phoneRegex = /^[0-9+]{8,15}$/
+    if (!phoneRegex.test(form.phone)) {
+      setError('Nomor telepon tidak valid (8-15 digit).')
+      return
+    }
+
+    if (form.password.length < 6) {
+      setError('Password minimal 6 karakter.')
+      return
+    }
+
     setLoading(true)
 
-    // Simulate API call
+    // Simulate API registration
     setTimeout(() => {
       setLoading(false)
-      const inputUser = form.username.trim().toLowerCase()
-      if (
-        (inputUser === 'budi@gmail.com') &&
-        form.password === '123456'
-      ) {
-        onLogin({ name: 'Budi Santoso', role: 'Peserta Magang', id: '#Apalah-HeHe' })
-      } else {
-        setError('Email atau password salah. Coba: budi / 123456')
-      }
-    }, 1200)
+      setSuccess('Pendaftaran berhasil! Mengalihkan ke halaman login...')
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        onBackToLogin()
+      }, 2000)
+    }, 1500)
   }
 
   return (
     <div className="min-h-screen w-full flex bg-white relative overflow-hidden font-sans">
-
-      {/* LEFT SIDE: Sidoarjo Card Logo on Light Gray Background (Hidden on mobile) */}
+      
+      {/* LEFT SIDE: Sidoarjo Card Logo on Light Gray Background (Hidden on mobile, matches Login/ForgotPassword) */}
       <div className="hidden md:flex md:w-[50%] lg:w-[55%] h-screen bg-[#e2e8f0] items-center justify-center relative p-8">
         
         {/* Centered Card */}
@@ -64,18 +86,18 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
         </span>
       </div>
 
-      {/* RIGHT SIDE: Login Form */}
+      {/* RIGHT SIDE: Register Form */}
       <div className="w-full md:w-[50%] lg:w-[45%] h-screen overflow-y-auto flex items-center justify-center bg-white relative p-6 sm:p-12 lg:p-16">
-
+        
         {/* Elegant Floating Back Button */}
         <button
-          onClick={onBack}
+          onClick={onBackToLogin}
           className="absolute top-6 right-6 flex items-center gap-1.5 text-gray-500 hover:text-gray-900 transition-colors text-xs font-semibold bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Kembali ke Beranda
+          Kembali ke Login
         </button>
 
         <div className="w-full max-w-[400px]">
@@ -98,29 +120,60 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] tracking-tight">Selamat Datang!</h1>
-          <p className="text-gray-500 text-sm mt-1 mb-8">Silakan masuk ke akun Anda</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] tracking-tight">Create an account</h1>
+          <p className="text-gray-500 text-sm mt-1 mb-8">Join now to get the experience</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name Field */}
+            <div>
+              <label htmlFor="name" className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
+                Name *
+              </label>
+              <div className="relative">
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
+                />
+              </div>
+            </div>
+
             {/* Email Field */}
             <div>
-              <label htmlFor="username" className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="email" className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
                 Email *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={form.username}
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={form.email}
                   onChange={handleChange}
                   placeholder="Enter your mail address"
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Phone Number Field */}
+            <div>
+              <label htmlFor="phone" className="block text-xs font-bold text-gray-800 mb-1.5 uppercase tracking-wide">
+                Phone number *
+              </label>
+              <div className="relative">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="text"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="Enter your phone number"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
                 />
               </div>
             </div>
@@ -131,19 +184,14 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
                 Password *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
                 <input
                   id="password"
                   name="password"
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
                   onChange={handleChange}
-                  placeholder="Enter Password"
-                  className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
+                  placeholder="Enter your password"
+                  className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 bg-white"
                 />
                 <button
                   type="button"
@@ -164,26 +212,6 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
               </div>
             </div>
 
-            {/* Remember me & Forgot Password */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-gray-700 font-medium">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span>Remember me</span>
-              </label>
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                className="text-blue-600 hover:text-blue-800 font-semibold transition-colors focus:outline-none"
-              >
-                Forgot your password ?
-              </button>
-            </div>
-
             {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2 text-red-600 text-sm">
@@ -194,16 +222,21 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
               </div>
             )}
 
-            {/* Demo Hint */}
-            <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 text-[11px] text-blue-700 leading-normal">
-              <span className="font-semibold">Demo Account:</span> Email/Username: <code className="font-bold bg-blue-100 px-1 py-0.5 rounded">budi@gmail.com</code> | Password: <code className="font-bold bg-blue-100 px-1 py-0.5 rounded">123456</code>
-            </div>
+            {/* Success Message */}
+            {success && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2 text-green-600 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {success}
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1d4ed8] hover:bg-blue-800 text-white font-semibold py-3.5 rounded-lg transition-all duration-200 hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-[#1d4ed8] hover:bg-blue-800 text-white font-semibold py-3.5 rounded-lg transition-all duration-200 hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm pt-2"
             >
               {loading ? (
                 <>
@@ -214,29 +247,20 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
                   Processing...
                 </>
               ) : (
-                <span className="flex items-center gap-2">
-                  Log In
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </span>
+                'Register'
               )}
             </button>
           </form>
 
-          {/* Register Link */}
-          <div className="text-center text-sm text-gray-600 mt-10">
-            Don't have an account ?{' '}
-            <a
-              href="#register"
-              onClick={(e) => {
-                e.preventDefault()
-                onRegister()
-              }}
-              className="text-blue-600 hover:text-blue-800 font-bold transition-colors"
+          {/* Back to Login Link */}
+          <div className="text-center text-sm text-gray-600 mt-8">
+            Already have an account?{' '}
+            <button
+              onClick={onBackToLogin}
+              className="text-blue-600 hover:text-blue-800 font-bold transition-colors focus:outline-none"
             >
-              Register here
-            </a>
+              Login here
+            </button>
           </div>
 
         </div>
@@ -244,7 +268,6 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
 
     </div>
   )
-
 }
 
-export default Login
+export default Register
