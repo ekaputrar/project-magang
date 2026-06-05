@@ -7,6 +7,7 @@ import CTA from './components/CTA'
 import Footer from './components/Footer'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Registration from './pages/Registration'
 import './index.css'
 
 // Pages: 'landing' | 'login' | 'dashboard'
@@ -33,6 +34,14 @@ function App() {
     )
   }
 
+  if (page === 'registration') {
+    return (
+      <Registration
+        onBack={() => setPage('landing')}
+      />
+    )
+  }
+
   if (page === 'dashboard') {
     return (
       <Dashboard
@@ -47,10 +56,10 @@ function App() {
     <div className="font-sans min-h-screen">
       <Navbar onLoginClick={() => setPage('login')} />
       <main>
-        <Hero onLoginClick={() => setPage('login')} />
+        <Hero onLoginClick={() => setPage('login')} onRegisterClick={() => setPage('registration')} />
         <Features />
         <About />
-        <CTA onLoginClick={() => setPage('login')} />
+        <CTA onLoginClick={() => setPage('login')} onRegisterClick={() => setPage('registration')} />
       </main>
       <Footer />
     </div>
