@@ -1,7 +1,7 @@
 import React from 'react'
 import heroImage from '../assets/hero_image.png'
 
-const Hero = () => {
+const Hero = ({ onLoginClick, onRegisterClick }) => {
   return (
     <section
       id="beranda"
@@ -28,15 +28,15 @@ const Hero = () => {
             Solusi digital terpadu untuk mengelola peserta magang di Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo secara efisien dan terintegrasi.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <a
-              href="#daftar"
+            <button
+              onClick={onRegisterClick}
               className="inline-flex items-center gap-2 bg-accent hover:bg-accent-dark text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 text-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               Daftar Magang
-            </a>
+            </button>
             <a
               href="#fitur"
               className="inline-flex items-center gap-2 border-2 border-white text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 hover:bg-white hover:text-primary-800 text-sm"

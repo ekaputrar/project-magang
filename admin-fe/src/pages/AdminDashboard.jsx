@@ -54,11 +54,17 @@ const AdminDashboard = () => {
           </p>
         </div>
         <div className="flex space-x-3">
-          <button className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => alert('Mengekspor laporan dashboard...')}
+          >
             <Download className="w-4 h-4 mr-2" />
             Export Laporan
           </button>
-          <button className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+          <button 
+            className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            onClick={() => alert('Membuka form tambah peserta baru...')}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Peserta
           </button>
@@ -149,7 +155,10 @@ const AdminDashboard = () => {
               <h3 className="text-base font-bold text-gray-800">Tren Pendaftaran Magang</h3>
               <p className="text-xs text-gray-500 mt-1">Statistik pendaftaran 6 bulan terakhir</p>
             </div>
-            <select className="bg-gray-50 border border-gray-100 text-xs text-gray-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <select 
+              className="bg-gray-50 border border-gray-100 text-xs text-gray-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              onChange={(e) => alert(`Memfilter tren pendaftaran untuk: ${e.target.value}`)}
+            >
               <option>Tahun 2023</option>
               <option>Tahun 2022</option>
             </select>
@@ -199,7 +208,10 @@ const AdminDashboard = () => {
               <h3 className="text-base font-bold text-gray-800">Distribusi Instansi</h3>
               <p className="text-xs text-gray-500 mt-1">Berdasarkan asal Universitas/Sekolah</p>
             </div>
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+            <button 
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={() => alert('Membuka opsi distribusi instansi...')}
+            >
               <MoreVertical className="w-5 h-5" />
             </button>
           </div>
@@ -251,7 +263,10 @@ const AdminDashboard = () => {
             <h3 className="text-base font-bold text-gray-800">Aktivitas Pendaftaran Terbaru</h3>
             <p className="text-xs text-gray-500 mt-1">Daftar permohonan magang yang masuk hari ini</p>
           </div>
-          <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+          <button 
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            onClick={() => alert('Membuka semua aktivitas pendaftaran...')}
+          >
             Lihat Semua
           </button>
         </div>
@@ -287,7 +302,10 @@ const AdminDashboard = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                  <button 
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                    onClick={() => alert('Memproses permohonan pendaftaran: Siti Aminah')}
+                  >
                     Proses
                   </button>
                 </td>
