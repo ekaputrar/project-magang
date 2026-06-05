@@ -9,7 +9,8 @@ import {
   LogOut,
   Search,
   Bell,
-  ChevronDown
+  ChevronDown,
+  ClipboardCheck
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -61,14 +62,39 @@ const AdminLayout = () => {
               </NavLink>
               <NavLink 
                 to="/admin/absensi" 
-                className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                className={({ isActive }) => 
+                  `flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`
+                }
               >
                 <ClipboardList className="w-5 h-5 mr-3" />
                 Absensi
               </NavLink>
               <NavLink 
+                to="/admin/pengajuan" 
+                className={({ isActive }) => 
+                  `flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`
+                }
+              >
+                <ClipboardCheck className="w-5 h-5 mr-3" />
+                Pengajuan Magang
+              </NavLink>
+              <NavLink 
                 to="/admin/surat-tugas" 
-                className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                className={({ isActive }) => 
+                  `flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-blue-50 text-blue-600' 
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`
+                }
               >
                 <FileText className="w-5 h-5 mr-3" />
                 Surat Tugas

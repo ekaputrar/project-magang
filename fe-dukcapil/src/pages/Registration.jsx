@@ -267,15 +267,26 @@ const Registration = ({ onBack }) => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-white text-[11px] font-bold ml-1">Bidang Tujuan</label>
-                <input
-                  type="text"
-                  name="bidangTujuan"
-                  value={formData.bidangTujuan}
-                  onChange={handleFormChange}
-                  readOnly={step === 3}
-                  placeholder="Bidang yang dituju"
-                  className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
-                />
+                {step === 3 ? (
+                  <input
+                    type="text"
+                    value={formData.bidangTujuan}
+                    readOnly
+                    className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800"
+                  />
+                ) : (
+                  <select
+                    name="bidangTujuan"
+                    value={formData.bidangTujuan}
+                    onChange={handleFormChange}
+                    className="w-full h-9 px-3 rounded-md border-none outline-none text-sm text-gray-800 bg-white cursor-pointer appearance-none"
+                  >
+                    <option value="" disabled>-- Pilih Bidang Tujuan --</option>
+                    <option value="Operator Plavon">Operator Plavon</option>
+                    <option value="Programmer">Programmer</option>
+                    <option value="Branding Development">Branding Development</option>
+                  </select>
+                )}
               </div>
 
               <div className="flex gap-4">

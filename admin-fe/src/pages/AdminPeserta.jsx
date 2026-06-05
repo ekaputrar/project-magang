@@ -642,9 +642,6 @@ const AdminPeserta = () => {
   };
 
   // ── Baca data pendaftaran dari localStorage ────────────────────────────────
-  // Karena admin-fe dan fe-dukcapil berjalan di port berbeda, mereka
-  // berbagi localStorage hanya jika origin sama. Jika berbeda port,
-  // gunakan key yang sudah disepakati dan polling berkala.
   useEffect(() => {
     const loadFromStorage = () => {
       try {
@@ -659,7 +656,6 @@ const AdminPeserta = () => {
             }
             return prev;
           });
-          // Tandai sebagai sudah dibaca (hapus dari antrian)
           localStorage.removeItem('pendaftaran_magang');
         }
       } catch (err) {
@@ -667,11 +663,35 @@ const AdminPeserta = () => {
       }
     };
 
-    // Baca langsung saat load
     loadFromStorage();
-
-    // Polling setiap 5 detik untuk menangkap pendaftaran baru
     const interval = setInterval(loadFromStorage, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Baca peserta yang disetujui dari halaman Pengajuan ─────────────────────
+  useEffect(() => {
+    const loadApproved = () => {
+      try {
+        const approved = JSON.parse(localStorage.getItem('approved_magang') || '[]');
+        if (approved.length > 0) {
+          setData(prev => {
+            const existingIds = new Set(prev.map(d => d.id));
+            const newEntries = approved.filter(s => !existingIds.has(s.id));
+            if (newEntries.length > 0) {
+              showToast(`✅ ${newEntries.length} peserta baru telah disetujui dan ditambahkan!`, 'success');
+              return [...newEntries, ...prev];
+            }
+            return prev;
+          });
+          localStorage.removeItem('approved_magang');
+        }
+      } catch (err) {
+        console.error('Gagal membaca data approved:', err);
+      }
+    };
+
+    loadApproved();
+    const interval = setInterval(loadApproved, 3000);
     return () => clearInterval(interval);
   }, []);
 

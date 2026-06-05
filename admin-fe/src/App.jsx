@@ -8,6 +8,7 @@ import AdminAbsensi from './pages/AdminAbsensi';
 import AdminSuratTugas from './pages/AdminSuratTugas';
 import AdminSuratTugasPrint from './pages/AdminSuratTugasPrint';
 import AdminSuratTugasCreate from './pages/AdminSuratTugasCreate';
+import AdminPengajuan from './pages/AdminPengajuan';
 
 
 
@@ -29,6 +30,7 @@ function App() {
           <Route path="absensi" element={<AdminAbsensi />} />
           <Route path="surat-tugas" element={<AdminSuratTugas />} />
           <Route path="surat-tugas/create" element={<AdminSuratTugasCreate />} />
+          <Route path="pengajuan" element={<AdminPengajuan />} />
           <Route path="pengaturan" element={<div className="p-8">Halaman Pengaturan</div>} />
         </Route>
       </Routes>
