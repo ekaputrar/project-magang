@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -18,6 +18,12 @@ const AdminLayout = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    navigate('/admin/login');
+  };
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
@@ -128,7 +134,11 @@ const AdminLayout = () => {
                 <p className="text-xs text-gray-500">Admin Utama</p>
               </div>
             </div>
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+            <button 
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Keluar"
+            >
               <LogOut className="w-5 h-5" />
             </button>
           </div>
@@ -231,7 +241,10 @@ const AdminLayout = () => {
                   <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center" onClick={() => alert('Membuka Pengaturan')}>
                     <Settings className="w-4 h-4 mr-2" /> Pengaturan
                   </button>
-                  <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center" onClick={() => alert('Proses Keluar')}>
+                  <button 
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center" 
+                    onClick={handleLogout}
+                  >
                     <LogOut className="w-4 h-4 mr-2" /> Keluar
                   </button>
                 </div>
