@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { 
@@ -11,16 +11,109 @@ import {
   Search,
   Bell,
   ChevronDown,
-  ClipboardCheck
+  ClipboardCheck,
+  CheckCheck,
+  ClipboardCopy,
+  UserCheck
 } from 'lucide-react';
 
+// ─── Helper ────────────────────────────────────────────────────────────────────
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return `${diff} detik yang lalu`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} menit yang lalu`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} jam yang lalu`;
+  return `${Math.floor(diff / 86400)} hari yang lalu`;
+};
+
+const STORAGE_KEY = 'admin_notif_read_ids';
+
+const getReadIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const saveReadIds = (ids) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+};
+
+// ─── Notification Item ─────────────────────────────────────────────────────────
+const NotifItem = ({ notif, isUnread, onClick }) => {
+  const statusColor = {
+    Menunggu: 'bg-yellow-100 text-yellow-700',
+    Disetujui: 'bg-green-100 text-green-700',
+    Ditolak: 'bg-red-100 text-red-600',
+  };
+  const statusIcon = {
+    Menunggu: <ClipboardCopy className="w-3.5 h-3.5" />,
+    Disetujui: <UserCheck className="w-3.5 h-3.5" />,
+    Ditolak: <ClipboardList className="w-3.5 h-3.5" />,
+  };
+
+  return (
+    <div
+      onClick={() => onClick(notif)}
+      className={`px-4 py-3.5 border-b border-gray-50 cursor-pointer transition-all hover:bg-blue-50/60 ${
+        isUnread ? 'bg-blue-50/40' : ''
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Avatar initials */}
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+          {(notif.nama || '?')
+            .split(' ')
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <p className={`text-sm font-semibold truncate ${isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
+              {notif.nama}
+            </p>
+            {isUnread && (
+              <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />
+            )}
+          </div>
+          <p className="text-xs text-gray-500 truncate">{notif.asal_instansi}</p>
+          <div className="flex items-center justify-between mt-1.5">
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                statusColor[notif.status] || 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {statusIcon[notif.status]}
+              {notif.status}
+            </span>
+            <span className="text-[10px] text-gray-400">{timeAgo(notif.tanggal_daftar)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Admin Layout ──────────────────────────────────────────────────────────────
 const AdminLayout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
+  const notifRef = useRef(null);
 
+  // ── Notifications State ────────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [readIds, setReadIds] = useState(getReadIds);
+
+  const unreadCount = notifications.filter((n) => !readIds.includes(n.id)).length;
+
+  // ── Admin Profile ──────────────────────────────────────────────────────────
   const [adminProfile, setAdminProfile] = useState({
     nama: 'Budi Santoso',
     email: 'admin@sidoarjo.go.id',
@@ -50,9 +143,82 @@ const AdminLayout = () => {
     }
   }, []);
 
+  // ── Fetch Notifications (latest 15 pengajuan) ──────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('pengajuans')
+      .select('id, nama, asal_instansi, status, tanggal_daftar, bidang_tujuan')
+      .order('tanggal_daftar', { ascending: false })
+      .limit(15);
+
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      return;
+    }
+    setNotifications(data || []);
+  }, []);
+
   useEffect(() => {
     fetchAdminProfile();
-  }, [fetchAdminProfile]);
+    fetchNotifications();
+
+    // Supabase Realtime: listen for new pengajuan INSERT
+    const channel = supabase
+      .channel('layout-notif-channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'pengajuans' },
+        (payload) => {
+          // Add new notification to top of list
+          setNotifications((prev) => {
+            const exists = prev.some((n) => n.id === payload.new.id);
+            if (exists) return prev;
+            const newItem = {
+              id: payload.new.id,
+              nama: payload.new.nama,
+              asal_instansi: payload.new.asal_instansi,
+              status: payload.new.status || 'Menunggu',
+              tanggal_daftar: payload.new.tanggal_daftar,
+              bidang_tujuan: payload.new.bidang_tujuan,
+            };
+            return [newItem, ...prev].slice(0, 15);
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchAdminProfile, fetchNotifications]);
+
+  // Close notification panel on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ── Mark all as read ───────────────────────────────────────────────────────
+  const markAllRead = () => {
+    const allIds = notifications.map((n) => n.id);
+    const merged = [...new Set([...readIds, ...allIds])];
+    setReadIds(merged);
+    saveReadIds(merged);
+  };
+
+  // ── Mark single as read and navigate ──────────────────────────────────────
+  const handleNotifClick = (notif) => {
+    const merged = [...new Set([...readIds, notif.id])];
+    setReadIds(merged);
+    saveReadIds(merged);
+    setShowNotifications(false);
+    navigate('/admin/pengajuan');
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -125,6 +291,12 @@ const AdminLayout = () => {
               >
                 <ClipboardCheck className="w-5 h-5 mr-3" />
                 Pengajuan Magang
+                {/* Unread badge on sidebar */}
+                {unreadCount > 0 && (
+                  <span className="ml-auto bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </NavLink>
               <NavLink 
                 to="/admin/surat-tugas" 
@@ -215,39 +387,90 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center space-x-6">
-            <div className="relative">
-              <button 
-                className="text-gray-400 hover:text-gray-600 transition-colors relative"
+            {/* ── Notification Bell ── */}
+            <div className="relative" ref={notifRef}>
+              <button
+                id="notif-bell-btn"
+                className="text-gray-400 hover:text-blue-500 transition-colors relative"
                 onClick={() => {
-                  setShowNotifications(!showNotifications);
+                  setShowNotifications((prev) => !prev);
                   setShowProfileMenu(false);
                 }}
+                aria-label="Notifikasi"
               >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full border border-white"></span>
+                <Bell className={`w-5 h-5 transition-transform duration-200 ${showNotifications ? 'text-blue-500 scale-110' : ''}`} />
+                {/* Unread badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none shadow-sm animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+                {unreadCount === 0 && (
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-gray-300 rounded-full border border-white" />
+                )}
               </button>
-              
+
+              {/* ── Notification Dropdown ── */}
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <h3 className="font-semibold text-gray-800 text-sm">Notifikasi</h3>
-                    <span className="text-xs text-blue-600 hover:underline cursor-pointer" onClick={() => alert('Semua notifikasi ditandai sudah dibaca')}>Tandai sudah dibaca</span>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <div className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => alert('Membuka detail peserta')}>
-                      <p className="text-sm font-medium text-gray-800">Peserta Baru Mendaftar</p>
-                      <p className="text-xs text-gray-500 mt-1">Siti Aminah dari UPN Veteran Jatim telah mendaftar.</p>
-                      <p className="text-xs text-gray-400 mt-2">5 menit yang lalu</p>
+                <div className="absolute right-0 mt-3 w-96 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                  style={{ animation: 'fadeInDown 0.18s ease' }}>
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-600">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-white" />
+                      <h3 className="font-semibold text-white text-sm">Notifikasi Pengajuan</h3>
+                      {unreadCount > 0 && (
+                        <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          {unreadCount} baru
+                        </span>
+                      )}
                     </div>
-                    <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => alert('Membuka form laporan')}>
-                      <p className="text-sm font-medium text-gray-800">Laporan Bulanan</p>
-                      <p className="text-xs text-gray-500 mt-1">Waktunya mengisi laporan evaluasi peserta magang.</p>
-                      <p className="text-xs text-gray-400 mt-2">1 jam yang lalu</p>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="flex items-center gap-1 text-[11px] text-white/80 hover:text-white transition-colors"
+                        title="Tandai semua sudah dibaca"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        Baca semua
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <Bell className="w-10 h-10 text-gray-200 mb-3" />
+                        <p className="text-sm text-gray-400 font-medium">Belum ada pengajuan masuk</p>
+                        <p className="text-xs text-gray-300 mt-1">Notifikasi akan muncul saat ada pengajuan baru</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <NotifItem
+                          key={notif.id}
+                          notif={notif}
+                          isUnread={!readIds.includes(notif.id)}
+                          onClick={handleNotifClick}
+                        />
+                      ))
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="p-3 border-t border-gray-100 bg-gray-50 text-center">
+                      <button
+                        className="text-sm text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          navigate('/admin/pengajuan');
+                        }}
+                      >
+                        Lihat Semua Pengajuan →
+                      </button>
                     </div>
-                  </div>
-                  <div className="p-2 border-t border-gray-100 text-center bg-gray-50">
-                    <button className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors" onClick={() => alert('Membuka semua notifikasi')}>Lihat Semua</button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -292,6 +515,13 @@ const AdminLayout = () => {
           <Outlet context={{ adminProfile, refreshAdminProfile: fetchAdminProfile }} />
         </main>
       </div>
+
+      <style>{`
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };
