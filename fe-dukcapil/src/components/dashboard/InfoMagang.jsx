@@ -1,11 +1,55 @@
 import React from 'react'
 
-const InfoMagang = ({ user }) => {
+const Skeleton = ({ className = '' }) => (
+  <div className={`animate-pulse bg-gray-100 rounded-lg ${className}`} />
+)
+
+const InfoMagang = ({ peserta, loading }) => {
+  // ── Hitung progres ──────────────────────────────────────────────────────────
+  const mulai = peserta?.tanggal_mulai ? new Date(peserta.tanggal_mulai) : null
+  const selesai = peserta?.tanggal_selesai ? new Date(peserta.tanggal_selesai) : null
+  const now = new Date()
+
+  let progressPct = 0
+  let elapsedDays = 0
+  let totalDays = 0
+  let progressLabel = '-'
+
+  if (mulai && selesai) {
+    totalDays = Math.max(1, Math.round((selesai - mulai) / (1000 * 60 * 60 * 24)))
+    elapsedDays = Math.max(0, Math.min(totalDays, Math.round((now - mulai) / (1000 * 60 * 60 * 24))))
+    progressPct = Math.round((elapsedDays / totalDays) * 100)
+    progressLabel = `${elapsedDays} dari ${totalDays} hari telah dijalani`
+  }
+
+  const fmtTgl = (dateStr) => {
+    if (!dateStr) return '-'
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    })
+  }
+
   const info = [
-    { label: 'ID Magang', value: user?.id || '#Apalah-HeHe', highlight: true },
-    { label: 'Tanggal Mulai', value: '09 Februari 2026' },
-    { label: 'Tanggal Selesai', value: '30 Juni 2026' },
-    { label: 'Divisi', value: 'Operator Plavon' },
+    {
+      label: 'Asal Instansi',
+      value: peserta?.asal_instansi || '-',
+      highlight: false,
+    },
+    {
+      label: 'Bidang / Divisi',
+      value: peserta?.bidang_tujuan || '-',
+      highlight: true,
+    },
+    {
+      label: 'Tanggal Mulai',
+      value: fmtTgl(peserta?.tanggal_mulai),
+      highlight: false,
+    },
+    {
+      label: 'Tanggal Selesai',
+      value: fmtTgl(peserta?.tanggal_selesai),
+      highlight: false,
+    },
   ]
 
   return (
@@ -28,29 +72,50 @@ const InfoMagang = ({ user }) => {
 
       {/* Info list */}
       <div className="space-y-3">
-        {info.map((item, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between py-2 border-b border-blue-700 border-opacity-40 last:border-0"
-          >
-            <span className="text-blue-300 text-xs">{item.label}</span>
-            <span className={`text-xs font-semibold ${item.highlight ? 'text-yellow-400' : 'text-white'}`}>
-              {item.value}
-            </span>
-          </div>
-        ))}
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-blue-700 border-opacity-40 last:border-0">
+                <Skeleton className="h-3 w-20 bg-blue-700" />
+                <Skeleton className="h-3 w-24 bg-blue-700" />
+              </div>
+            ))
+          : info.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between py-2 border-b border-blue-700 border-opacity-40 last:border-0"
+              >
+                <span className="text-blue-300 text-xs">{item.label}</span>
+                <span className={`text-xs font-semibold text-right max-w-[55%] truncate ${item.highlight ? 'text-yellow-400' : 'text-white'}`}>
+                  {item.value}
+                </span>
+              </div>
+            ))
+        }
       </div>
 
       {/* Progress section */}
       <div className="mt-4 pt-4 border-t border-blue-700 border-opacity-40">
         <div className="flex items-center justify-between mb-2">
           <span className="text-blue-300 text-xs">Progres Magang</span>
-          <span className="text-white text-xs font-semibold">50%</span>
+          {loading ? (
+            <Skeleton className="h-3 w-8 bg-blue-700" />
+          ) : (
+            <span className="text-white text-xs font-semibold">{progressPct}%</span>
+          )}
         </div>
-        <div className="h-1.5 bg-blue-900 bg-opacity-50 rounded-full overflow-hidden">
-          <div className="h-full bg-yellow-400 rounded-full" style={{ width: '50%' }}></div>
-        </div>
-        <p className="text-blue-400 text-xs mt-2">2 dari 4 bulan telah dijalani</p>
+        {loading ? (
+          <Skeleton className="h-1.5 w-full bg-blue-700 rounded-full" />
+        ) : (
+          <div className="h-1.5 bg-blue-900 bg-opacity-50 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-yellow-400 rounded-full transition-all duration-700"
+              style={{ width: `${Math.min(progressPct, 100)}%` }}
+            />
+          </div>
+        )}
+        <p className="text-blue-400 text-xs mt-2">
+          {loading ? '' : progressLabel}
+        </p>
       </div>
     </div>
   )

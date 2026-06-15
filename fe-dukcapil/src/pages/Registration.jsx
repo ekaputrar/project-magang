@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
 const Registration = ({ onBack }) => {
+  const [pengajuanId] = useState(() => `PGJ-${Date.now()}`)
+  const [isSaving, setIsSaving] = useState(false)
   const [step, setStep] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
   const [activeUploadField, setActiveUploadField] = useState(null)
@@ -32,35 +35,62 @@ const Registration = ({ onBack }) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     e.target.value = null;
     if (isUploading) return;
     setIsUploading(true);
     setUploadProgress(0);
+
     let sizeText = '';
     if (file.size < 1024 * 1024) {
       sizeText = Math.max(1, Math.round(file.size / 1024)) + ' KB';
     } else {
       sizeText = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     }
+
     let progress = 0;
     const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 20) + 10;
-      if (progress > 100) progress = 100;
+      progress += Math.floor(Math.random() * 15) + 5;
+      if (progress > 90) progress = 90;
       setUploadProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadedFiles(prev => ({
-            ...prev,
-            [activeUploadField]: [...prev[activeUploadField], { name: file.name, size: sizeText }]
-          }));
-        }, 400);
-      }
-    }, 300);
+    }, 100);
+
+    const filePath = `${pengajuanId}/${activeUploadField}/${file.name}`;
+    const { data, error } = await supabase.storage
+      .from('berkas-pengajuan')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    clearInterval(interval);
+
+    if (error) {
+      setIsUploading(false);
+      alert('Gagal mengunggah berkas: ' + error.message);
+      return;
+    }
+
+    setUploadProgress(100);
+    setTimeout(() => {
+      setIsUploading(false);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('berkas-pengajuan')
+        .getPublicUrl(filePath);
+
+      setUploadedFiles(prev => ({
+        ...prev,
+        [activeUploadField]: [...prev[activeUploadField], { 
+          name: file.name, 
+          size: sizeText,
+          path: filePath,
+          url: publicUrl
+        }]
+      }));
+    }, 400);
   }
 
   const openUploadModal = (field) => { setActiveUploadField(field) }
@@ -100,73 +130,72 @@ const Registration = ({ onBack }) => {
     if (step < 3) setStep(step + 1)
   }
 
-  // ── Simpan data ke localStorage saat submit ───────────────────────────────────
-  const handleSimpan = (e) => {
+  // ── Simpan data ke Supabase saat submit ───────────────────────────────────
+  const handleSimpan = async (e) => {
     e.preventDefault()
+    if (isSaving) return
+    setIsSaving(true)
 
-    // Format periode dari tanggal mulai & selesai
-    const formatDate = (dateStr) => {
-      if (!dateStr) return ''
-      const d = new Date(dateStr)
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-    }
-
-    const tglMulai  = formatDate(formData.tanggalMulai)
-    const tglSelesai = formatDate(formData.tanggalSelesai)
-
-    // Hitung durasi dalam bulan
-    let durasiText = '-'
-    if (formData.tanggalMulai && formData.tanggalSelesai) {
-      const start = new Date(formData.tanggalMulai)
-      const end   = new Date(formData.tanggalSelesai)
-      const months = Math.round((end - start) / (1000 * 60 * 60 * 24 * 30))
-      durasiText = months > 0 ? `${months} Bulan` : '< 1 Bulan'
-    }
-
-    const colors = ['bg-blue-500', 'bg-pink-500', 'bg-teal-500', 'bg-purple-500', 'bg-indigo-500']
-    const initials = formData.nama.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-
-    const newPeserta = {
-      id: String(Date.now()),
-      name: formData.nama,
-      identifier: formData.email ? `Email: ${formData.email}` : 'Peserta Baru',
-      initials,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      // Field sesuai form pendaftaran
-      nama: formData.nama,
-      noHp: formData.noHp,
-      email: formData.email,
-      asalInstansi: formData.asalInstansi,
-      bidangTujuan: formData.bidangTujuan,
-      tanggalMulai: formData.tanggalMulai,
-      tanggalSelesai: formData.tanggalSelesai,
-      // Field turunan untuk tabel admin
-      instansi: formData.asalInstansi,
-      penempatan: formData.bidangTujuan,
-      telepon: formData.noHp,
-      periode: tglMulai && tglSelesai ? `${tglMulai} - ${tglSelesai}` : '-',
-      durasi: durasiText,
-      status: 'Pending',
-      // Berkas yang diupload
-      berkas: {
-        surat_pengantar: uploadedFiles.surat_pengantar,
-        proposal: uploadedFiles.proposal,
-        portofolio: uploadedFiles.portofolio,
-        cv: uploadedFiles.cv,
-      },
-      tanggalDaftar: new Date().toISOString(),
-    }
-
-    // Simpan ke localStorage — admin akan membacanya
     try {
-      const existing = JSON.parse(localStorage.getItem('pendaftaran_magang') || '[]')
-      existing.unshift(newPeserta) // terbaru di atas
-      localStorage.setItem('pendaftaran_magang', JSON.stringify(existing))
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: profile } = user ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle() : { data: null }
+      const isAdmin = localStorage.getItem('adminToken') === 'true' || (profile && profile.role === 'admin')
+      const userId = (user && !isAdmin) ? user.id : null
+
+      // 1. Insert into pengajuans
+      const { error: insertError } = await supabase
+        .from('pengajuans')
+        .insert({
+          id: pengajuanId,
+          user_id: userId,
+          nama: formData.nama,
+          email: formData.email,
+          no_hp: formData.noHp,
+          asal_instansi: formData.asalInstansi,
+          bidang_tujuan: formData.bidangTujuan,
+          tanggal_mulai: formData.tanggalMulai || null,
+          tanggal_selesai: formData.tanggalSelesai || null,
+          status: 'Menunggu'
+        })
+
+      if (insertError) {
+        alert('Gagal mengirim pendaftaran: ' + insertError.message)
+        setIsSaving(false)
+        return
+      }
+
+      // 2. Insert into berkases (all uploaded files)
+      const berkasRows = []
+      Object.keys(uploadedFiles).forEach(jenis => {
+        const files = uploadedFiles[jenis]
+        files.forEach(file => {
+          berkasRows.push({
+            pengajuan_id: pengajuanId,
+            jenis: jenis,
+            filename: file.name,
+            storage_path: file.path,
+            size: file.size
+          })
+        })
+      })
+
+      if (berkasRows.length > 0) {
+        const { error: berkasError } = await supabase
+          .from('berkases')
+          .insert(berkasRows)
+
+        if (berkasError) {
+          console.error('Gagal menyimpan metadata berkas:', berkasError)
+        }
+      }
+
+      setShowSuccess(true)
     } catch (err) {
       console.error('Gagal menyimpan data:', err)
+      alert('Terjadi kesalahan saat menyimpan data.')
+    } finally {
+      setIsSaving(false)
     }
-
-    setShowSuccess(true)
   }
 
   const handleBackStep = (e) => {
@@ -344,16 +373,18 @@ const Registration = ({ onBack }) => {
         <button
           onClick={handleBackStep}
           type="button"
-          className="bg-[#b91c1c] text-white font-bold py-2 px-8 rounded-md hover:bg-red-800 transition-colors shadow-sm text-sm"
+          disabled={isSaving}
+          className="bg-[#b91c1c] text-white font-bold py-2 px-8 rounded-md hover:bg-red-800 transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Kembali
         </button>
         <button
           onClick={step === 3 ? handleSimpan : handleNext}
           type="button"
-          className="bg-[#3b82f6] text-white font-bold py-2 px-8 rounded-md hover:bg-blue-600 transition-colors shadow-sm text-sm"
+          disabled={isSaving}
+          className="bg-[#3b82f6] text-white font-bold py-2 px-8 rounded-md hover:bg-blue-600 transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {step === 3 ? 'Simpan' : 'Lanjutkan'}
+          {step === 3 ? (isSaving ? 'Menyimpan...' : 'Simpan') : 'Lanjutkan'}
         </button>
       </div>
 

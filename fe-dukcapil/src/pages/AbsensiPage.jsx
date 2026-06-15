@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from 'react'
-
-// ─── Riwayat absensi (sample data) ───────────────────────────────────────────
-const riwayatData = [
-  { id: 1, date: '01 Jun 2026', day: 'Senin',  masuk: '07:48', keluar: '16:03', lokasi: 'Kantor Dukcapil Sidoarjo', status: 'Hadir' },
-  { id: 2, date: '31 Mei 2026', day: 'Minggu', masuk: null,    keluar: null,    lokasi: 'Hari Libur',               status: 'Libur' },
-  { id: 3, date: '30 Mei 2026', day: 'Sabtu',  masuk: null,    keluar: null,    lokasi: 'Hari Libur',               status: 'Libur' },
-  { id: 4, date: '29 Mei 2026', day: 'Jumat',  masuk: '07:52', keluar: '16:05', lokasi: 'Kantor Dukcapil Sidoarjo', status: 'Hadir' },
-  { id: 5, date: '28 Mei 2026', day: 'Kamis',  masuk: null,    keluar: null,    lokasi: 'Surat Izin Sakit',         status: 'Izin' },
-  { id: 6, date: '27 Mei 2026', day: 'Rabu',   masuk: '08:10', keluar: '16:00', lokasi: 'Kantor Dukcapil Sidoarjo', status: 'Terlambat' },
-]
+import { supabase } from '../lib/supabaseClient'
 
 const statusConfig = {
   Hadir:     { pill: 'bg-green-100 text-green-600',   dot: 'bg-green-500' },
@@ -16,11 +7,6 @@ const statusConfig = {
   Terlambat: { pill: 'bg-orange-100 text-orange-600', dot: 'bg-orange-500' },
   Absen:     { pill: 'bg-red-100 text-red-500',       dot: 'bg-red-500' },
   Libur:     { pill: 'bg-gray-100 text-gray-400',     dot: 'bg-gray-300' },
-}
-
-// Dot status per tanggal di bulan sekarang (Juni 2026)
-const currentMonthDots = {
-  1: 'Hadir',
 }
 
 // ─── Modal Ajukan Izin ────────────────────────────────────────────────────────
@@ -47,14 +33,18 @@ const IzinModal = ({ onClose, onSubmit }) => {
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
   const handleFile = (e) => setForm({ ...form, file: e.target.files[0] || null })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
+    try {
+      await onSubmit(form)
       setSubmitted(true)
-      setTimeout(() => { onSubmit(form); onClose() }, 1500)
-    }, 1400)
+      setTimeout(() => { onClose() }, 1500)
+    } catch (err) {
+      alert('Gagal mengirim permohonan izin: ' + err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // Hitung jumlah hari izin
@@ -340,7 +330,9 @@ const DynamicCalendar = ({ markedDates = {} }) => {
           const isFuture = isViewingCurrentMonth && day > todayDate
           const isSunday = (firstDayOfWeek + day - 1) % 7 === 0
           const isSaturday = (firstDayOfWeek + day - 1) % 7 === 6
-          const dot = markedDates[day]
+          
+          const dateKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const dot = markedDates[dateKey]
 
           return (
             <div key={day} className="flex flex-col items-center py-0.5">
@@ -360,7 +352,7 @@ const DynamicCalendar = ({ markedDates = {} }) => {
               {/* Status dot */}
               {dot ? (
                 <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${dotColor[dot] || 'bg-gray-300'}`} />
-              ) : (!isFuture && !isSunday && !isSaturday && isViewingCurrentMonth) ? (
+              ) : (!isFuture && !isSunday && !isSaturday) ? (
                 <span className="w-1.5 h-1.5 mt-0.5" />
               ) : null}
             </div>
@@ -382,35 +374,283 @@ const DynamicCalendar = ({ markedDates = {} }) => {
 }
 
 // ─── Halaman Absensi Utama ────────────────────────────────────────────────────
-const AbsensiPage = () => {
+const AbsensiPage = ({ user }) => {
   const [now, setNow] = useState(new Date())
-  const [checkInTime,  setCheckInTime]  = useState(null)
-  const [checkOutTime, setCheckOutTime] = useState(null)
-  const [loadingIn,    setLoadingIn]    = useState(false)
-  const [loadingOut,   setLoadingOut]   = useState(false)
+  const [loadingPeserta, setLoadingPeserta] = useState(true)
+  const [loadingData, setLoadingData] = useState(true)
+  const [peserta, setPeserta] = useState(null)
+  const [absensiLogs, setAbsensiLogs] = useState([])
+  const [loadingIn, setLoadingIn] = useState(false)
+  const [loadingOut, setLoadingOut] = useState(false)
   const [showIzinModal, setShowIzinModal] = useState(false)
-  const [izinList, setIzinList] = useState([])
   const [page, setPage] = useState(1)
   const [showSuccessToast, setShowSuccessToast] = useState(false)
   const PER_PAGE = 6
 
-  // Live clock — tick every second
+  // Fetch data peserta aktif berdasarkan user_id (dengan self-healing fallback ke email)
+  const fetchPeserta = async () => {
+    try {
+      setLoadingPeserta(true)
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      const uId = user?.id || currentUser?.id
+      const uEmail = currentUser?.email
+      if (!uId) {
+        setPeserta(null)
+        setLoadingPeserta(false)
+        return
+      }
+
+      // 1. Coba cari berdasarkan user_id
+      let { data, error } = await supabase
+        .from('pesertas')
+        .select('*')
+        .eq('user_id', uId)
+        .eq('status', 'Aktif')
+        .maybeSingle()
+
+      // 2. Jika tidak ditemukan, coba cari berdasarkan email (self-healing linkage)
+      if (!data && uEmail) {
+        const { data: byEmail, error: emailErr } = await supabase
+          .from('pesertas')
+          .select('*')
+          .eq('email', uEmail)
+          .eq('status', 'Aktif')
+          .maybeSingle()
+
+        if (byEmail) {
+          // Link user_id ke tabel pesertas di database
+          const { error: updatePesertaErr } = await supabase
+            .from('pesertas')
+            .update({ user_id: uId })
+            .eq('id', byEmail.id)
+
+          // Link user_id ke tabel pengajuans di database agar data konsisten
+          if (byEmail.pengajuan_id) {
+            await supabase
+              .from('pengajuans')
+              .update({ user_id: uId })
+              .eq('id', byEmail.pengajuan_id)
+          }
+
+          if (!updatePesertaErr) {
+            byEmail.user_id = uId
+            data = byEmail
+          }
+        }
+      }
+
+      if (error) throw error
+      setPeserta(data)
+    } catch (e) {
+      console.error('Error fetching peserta:', e)
+    } finally {
+      setLoadingPeserta(false)
+    }
+  }
+
+  // Fetch log absensi untuk peserta tertentu
+  const fetchAbsensiLogs = async (pesertaId) => {
+    try {
+      setLoadingData(true)
+      const { data, error } = await supabase
+        .from('absensis')
+        .select('*')
+        .eq('peserta_id', pesertaId)
+        .order('tanggal', { ascending: false })
+
+      if (error) throw error
+      setAbsensiLogs(data || [])
+    } catch (e) {
+      console.error('Error fetching absensi:', e)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPeserta()
+  }, [user])
+
+  useEffect(() => {
+    if (peserta) {
+      fetchAbsensiLogs(peserta.id)
+    }
+  }, [peserta])
+
+  // Live clock — tick setiap detik
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
 
+  const parseTimeStr = (dateStr, timeStr) => {
+    if (!timeStr) return null
+    return new Date(`${dateStr}T${timeStr}`)
+  }
+
   const formatTime      = d => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
   const formatTimeShort = d => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })
   const formatDate      = d => d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-  const handleCheckIn  = () => { setLoadingIn(true);  setTimeout(() => { setLoadingIn(false);  setCheckInTime(new Date()) }, 1200) }
-  const handleCheckOut = () => { setLoadingOut(true); setTimeout(() => { setLoadingOut(false); setCheckOutTime(new Date()) }, 1200) }
+  // Cari absensi hari ini dari database logs
+  const todayStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD local time
+  const todayEntry = absensiLogs.find(log => log.tanggal === todayStr)
 
-  const handleIzinSubmit = (data) => {
-    setIzinList(prev => [data, ...prev])
+  const checkInTime = todayEntry && todayEntry.check_in ? parseTimeStr(todayEntry.tanggal, todayEntry.check_in) : null
+  const checkOutTime = todayEntry && todayEntry.check_out ? parseTimeStr(todayEntry.tanggal, todayEntry.check_out) : null
+
+  const getDisplayStatus = (log) => {
+    if (log.status === 'Izin' || log.status === 'Sakit') return 'Izin'
+    if (log.status === 'Alpa') return 'Absen'
+    if (log.status === 'Hadir' && log.check_in && log.check_in > '08:00:00') return 'Terlambat'
+    return 'Hadir'
+  }
+
+  const handleCheckIn = async () => {
+    if (!peserta) return
+    setLoadingIn(true)
+    try {
+      const nowTime = new Date()
+      const tStr = nowTime.toLocaleDateString('en-CA')
+      const timeStr = nowTime.toTimeString().slice(0, 8)
+
+      const { error } = await supabase
+        .from('absensis')
+        .insert({
+          peserta_id: peserta.id,
+          tanggal: tStr,
+          check_in: timeStr,
+          lokasi: 'WFO',
+          status: 'Hadir',
+          keterangan: 'Kantor Dukcapil Sidoarjo'
+        })
+
+      if (error) {
+        alert('Gagal melakukan check-in: ' + error.message)
+        return
+      }
+
+      await fetchAbsensiLogs(peserta.id)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingIn(false)
+    }
+  }
+
+  const handleCheckOut = async () => {
+    if (!peserta || !todayEntry) return
+    setLoadingOut(true)
+    try {
+      const nowTime = new Date()
+      const timeStr = nowTime.toTimeString().slice(0, 8)
+
+      const { error } = await supabase
+        .from('absensis')
+        .update({
+          check_out: timeStr
+        })
+        .eq('peserta_id', peserta.id)
+        .eq('tanggal', todayStr)
+
+      if (error) {
+        alert('Gagal melakukan check-out: ' + error.message)
+        return
+      }
+
+      await fetchAbsensiLogs(peserta.id)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingOut(false)
+    }
+  }
+
+  const handleIzinSubmit = async (formData) => {
+    if (!peserta) return
+    
+    // 1. Upload file pendukung jika ada
+    let fileUrl = null
+    if (formData.file) {
+      const fileExt = formData.file.name.split('.').pop()
+      const fileName = `izin_${Date.now()}.${fileExt}`
+      const filePath = `${peserta.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('berkas-pengajuan')
+        .upload(filePath, formData.file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('berkas-pengajuan')
+        .getPublicUrl(filePath)
+
+      fileUrl = publicUrl
+    }
+
+    // 2. Generate date range rows
+    const start = new Date(formData.tanggalMulai)
+    const end = new Date(formData.tanggalSelesai)
+    const rows = []
+
+    const current = new Date(start)
+    while (current <= end) {
+      const dateStr = current.toLocaleDateString('en-CA')
+      rows.push({
+        peserta_id: peserta.id,
+        tanggal: dateStr,
+        status: formData.jenis === 'Sakit' ? 'Sakit' : 'Izin',
+        lokasi: null,
+        check_in: null,
+        check_out: null,
+        keterangan: `${formData.jenis}: ${formData.keterangan}${fileUrl ? ` [Unduh Berkas](${fileUrl})` : ''}`
+      })
+      current.setDate(current.getDate() + 1)
+    }
+
+    // 3. Upsert ke tabel absensis
+    const { error: insertError } = await supabase
+      .from('absensis')
+      .upsert(rows, { onConflict: 'peserta_id,tanggal' })
+
+    if (insertError) throw insertError
+
     setShowSuccessToast(true)
     setTimeout(() => setShowSuccessToast(false), 3500)
+    await fetchAbsensiLogs(peserta.id)
+  }
+
+  // Loading & Peringatan UI State
+  if (loadingPeserta) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <svg className="animate-spin h-10 w-10 text-primary-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <p className="text-sm text-gray-500 mt-4 font-semibold">Memuat profil magang Anda...</p>
+      </div>
+    )
+  }
+
+  if (!peserta) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 max-w-2xl mx-auto text-center my-10">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">Akses Terbatas</h3>
+        <p className="text-gray-500 text-sm leading-relaxed mb-6">
+          Halaman absensi hanya dapat diakses oleh peserta magang aktif. Pendaftaran Anda saat ini belum disetujui atau akun Anda belum terhubung dengan data peserta magang aktif.
+        </p>
+        <p className="text-xs text-gray-400">
+          Silakan hubungi admin Disdukcapil jika Anda memiliki kendala.
+        </p>
+      </div>
+    )
   }
 
   const absenStatus = !checkInTime ? 'Belum Absen' : !checkOutTime ? 'Check In' : 'Selesai'
@@ -425,16 +665,38 @@ const AbsensiPage = () => {
     'Selesai':     'bg-green-500',
   }
 
-  // Gabung riwayat asli + izin yang baru diajukan (untuk tampil di tabel)
-  const allRiwayat = [...riwayatData]
-  const paginated  = allRiwayat.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-  const totalPages = Math.ceil(allRiwayat.length / PER_PAGE)
+  // Hitung stats absensi dari database
+  const totalHadir = absensiLogs.filter(log => log.status === 'Hadir' || log.status === 'Terlambat').length
+  const totalIzin = absensiLogs.filter(log => log.status === 'Izin' || log.status === 'Sakit').length
+  const totalAlpa = absensiLogs.filter(log => log.status === 'Alpa').length
+  const totalDays = totalHadir + totalIzin + totalAlpa
+  const kehadiranPercent = totalDays > 0 ? Math.round((totalHadir / totalDays) * 100) : 0
 
-  // Dot kalender — tandai tanggal sekarang jika sudah check-in
-  const today = now.getDate()
-  const calendarMarks = { ...currentMonthDots }
-  if (checkOutTime) calendarMarks[today] = 'Hadir'
-  else if (checkInTime) calendarMarks[today] = 'Terlambat' // check-in belum out
+  // Format database logs ke baris tabel riwayat
+  const formattedLogs = absensiLogs.map((log, index) => {
+    const logDate = new Date(log.tanggal)
+    const dateFormatted = logDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+    const dayName = logDate.toLocaleDateString('id-ID', { weekday: 'long' })
+
+    return {
+      id: log.id || index,
+      date: dateFormatted,
+      day: dayName,
+      masuk: log.check_in ? log.check_in.slice(0, 5) : null,
+      keluar: log.check_out ? log.check_out.slice(0, 5) : null,
+      lokasi: log.status === 'Izin' || log.status === 'Sakit' ? log.keterangan : (log.lokasi || 'WFO'),
+      status: getDisplayStatus(log)
+    }
+  })
+
+  const paginated  = formattedLogs.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  const totalPages = Math.ceil(formattedLogs.length / PER_PAGE) || 1
+
+  // Mark calendar dots
+  const calendarMarks = {}
+  absensiLogs.forEach(log => {
+    calendarMarks[log.tanggal] = getDisplayStatus(log)
+  })
 
   return (
     <div className="space-y-5">
@@ -625,7 +887,7 @@ const AbsensiPage = () => {
             <div>
               <p className="text-xs text-gray-400">Total Hadir</p>
               <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold text-gray-800">20</span>
+                <span className="text-2xl font-bold text-gray-800">{totalHadir}</span>
                 <span className="text-sm text-gray-400">Hari</span>
               </div>
             </div>
@@ -641,7 +903,7 @@ const AbsensiPage = () => {
             <div>
               <p className="text-xs text-gray-400">Izin / Sakit</p>
               <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold text-gray-800">{2 + izinList.length}</span>
+                <span className="text-2xl font-bold text-gray-800">{totalIzin}</span>
                 <span className="text-sm text-gray-400">Hari</span>
               </div>
             </div>
@@ -657,7 +919,7 @@ const AbsensiPage = () => {
             <div>
               <p className="text-xs text-gray-400">Tidak Hadir</p>
               <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold text-gray-800">1</span>
+                <span className="text-2xl font-bold text-gray-800">{totalAlpa}</span>
                 <span className="text-sm text-gray-400">Hari</span>
               </div>
             </div>
@@ -667,13 +929,13 @@ const AbsensiPage = () => {
           <div className="rounded-2xl p-5 flex-1" style={{ background: 'linear-gradient(135deg, #1a2e6e 0%, #1E40AF 100%)' }}>
             <p className="text-blue-300 text-xs mb-2">Tingkat Kehadiran</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold text-white">87</span>
+              <span className="text-4xl font-bold text-white">{kehadiranPercent}</span>
               <span className="text-xl font-bold text-white">%</span>
             </div>
             <div className="mt-3 h-2 bg-blue-900 bg-opacity-50 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: '87%' }} />
+              <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: `${kehadiranPercent}%` }} />
             </div>
-            <p className="text-blue-400 text-xs mt-2">20 dari 23 hari kerja</p>
+            <p className="text-blue-400 text-xs mt-2">{totalHadir} dari {totalDays} hari terdata</p>
           </div>
         </div>
       </div>
@@ -721,7 +983,15 @@ const AbsensiPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginated.map(row => {
+                {loadingData ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-10 text-sm text-gray-400">Memuat riwayat kehadiran...</td>
+                  </tr>
+                ) : paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-10 text-sm text-gray-400">Belum ada riwayat kehadiran.</td>
+                  </tr>
+                ) : paginated.map(row => {
                   const cfg = statusConfig[row.status] || statusConfig.Hadir
                   const isIzin  = row.status === 'Izin'
                   const isAbsen = row.status === 'Absen'
@@ -772,7 +1042,7 @@ const AbsensiPage = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                           )}
-                          <span className="truncate max-w-[140px]">{row.lokasi}</span>
+                          <span className="truncate max-w-[200px]" title={row.lokasi}>{row.lokasi}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
@@ -790,7 +1060,7 @@ const AbsensiPage = () => {
 
           {/* Pagination */}
           <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400">Menampilkan {paginated.length} dari {allRiwayat.length} entri</p>
+            <p className="text-xs text-gray-400">Menampilkan {paginated.length} dari {formattedLogs.length} entri</p>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -828,4 +1098,4 @@ const AbsensiPage = () => {
   )
 }
 
-export default AbsensiPage
+export default AbsensiPage;

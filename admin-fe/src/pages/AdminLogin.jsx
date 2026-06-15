@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -16,13 +18,37 @@ const AdminLogin = () => {
       return;
     }
 
-    // Authenticate with default credentials
-    if (email === 'admin@sidoarjo.go.id' && password === 'admin') {
-      localStorage.setItem('adminToken', 'true');
-      navigate('/admin/dashboard');
-    } else {
+    setLoading(true);
+
+    // 1. Sign in with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setLoading(false);
       setError('Email atau password salah.');
+      return;
     }
+
+    // 2. Verify if the user has an admin role in the profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if (profileError || !profileData || profileData.role !== 'admin') {
+      // If not an admin, sign out immediately and show access denied
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError('Akses ditolak. Akun Anda bukan Administrator.');
+      return;
+    }
+
+    setLoading(false);
+    navigate('/admin/dashboard');
   };
 
   return (
@@ -36,7 +62,7 @@ const AdminLogin = () => {
       <div className="bg-white rounded-[2rem] p-10 w-full max-w-md shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-[#1e293b] mb-2">Selamat Datang</h2>
-          <p className="text-gray-500 text-sm">Masuk ke akun Anda</p>
+          <p className="text-gray-500 text-sm">Masuk ke akun Admin Anda</p>
         </div>
         
         {error && (
@@ -75,10 +101,21 @@ const AdminLogin = () => {
           </div>
           
           <button 
-            className="w-full bg-[#3b82f6] hover:bg-blue-600 text-white font-semibold py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200"
+            className="w-full bg-[#3b82f6] hover:bg-blue-600 text-white font-semibold py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             type="submit"
+            disabled={loading}
           >
-            Masuk
+            {loading ? (
+              <>
+                <svg className="animate-spin w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Memproses...
+              </>
+            ) : (
+              'Masuk'
+            )}
           </button>
         </form>
       </div>

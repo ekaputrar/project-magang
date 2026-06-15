@@ -40,7 +40,7 @@ const navItems = [
   },
 ]
 
-const Sidebar = ({ user, activePage, onNavigate, onLogout }) => {
+const Sidebar = ({ user, peserta, activePage, onNavigate, onLogout }) => {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -98,13 +98,13 @@ const Sidebar = ({ user, activePage, onNavigate, onLogout }) => {
           <div className="flex flex-col items-center text-center">
             <div className="relative mb-3">
               <img
-                src={avatarImg}
-                alt={user?.name}
+                src={peserta?.foto_url || avatarImg}
+                alt={peserta?.nama || user?.name}
                 className="w-16 h-16 rounded-full object-cover border-2 border-white border-opacity-30"
               />
               <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 border-2 border-blue-800 rounded-full"></span>
             </div>
-            <div className="text-white font-semibold text-sm">{user?.name || 'Budi Santoso'}</div>
+            <div className="text-white font-semibold text-sm">{peserta?.nama || user?.name || 'Budi Santoso'}</div>
             <span className="mt-1 text-xs bg-blue-600 bg-opacity-50 text-blue-200 px-2.5 py-0.5 rounded-full">
               {user?.role || 'Peserta Magang'}
             </span>

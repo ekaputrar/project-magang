@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
 const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
   const [form, setForm] = useState({ username: '', password: '' })
@@ -12,27 +13,33 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
     setError('')
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.username || !form.password) {
       setError('Email dan password harus diisi.')
       return
     }
     setLoading(true)
+    setError('')
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-      const inputUser = form.username.trim().toLowerCase()
-      if (
-        (inputUser === 'budi@gmail.com') &&
-        form.password === '123456'
-      ) {
-        onLogin({ name: 'Budi Santoso', role: 'Peserta Magang', id: '#Apalah-HeHe' })
-      } else {
-        setError('Email atau password salah. Coba: budi / 123456')
-      }
-    }, 1200)
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: form.username.trim(),
+      password: form.password,
+    })
+
+    setLoading(false)
+
+    if (authError) {
+      setError('Email atau password salah. Pastikan akun Anda sudah terdaftar.')
+      return
+    }
+
+    onLogin({ 
+      name: data.user?.user_metadata?.name || data.user?.email, 
+      role: 'Peserta Magang', 
+      id: data.user?.id,
+      email: data.user?.email
+    })
   }
 
   return (
@@ -194,10 +201,6 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
               </div>
             )}
 
-            {/* Demo Hint */}
-            <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 text-[11px] text-blue-700 leading-normal">
-              <span className="font-semibold">Demo Account:</span> Email/Username: <code className="font-bold bg-blue-100 px-1 py-0.5 rounded">budi@gmail.com</code> | Password: <code className="font-bold bg-blue-100 px-1 py-0.5 rounded">123456</code>
-            </div>
 
             {/* Submit Button */}
             <button

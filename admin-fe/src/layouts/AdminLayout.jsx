@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 import { 
   LayoutDashboard, 
   Users, 
@@ -20,8 +21,8 @@ const AdminLayout = () => {
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/admin/login');
   };
 

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import './index.css';
 import AdminLogin from './pages/AdminLogin';
@@ -10,23 +11,98 @@ import AdminSuratTugasPrint from './pages/AdminSuratTugasPrint';
 import AdminSuratTugasCreate from './pages/AdminSuratTugasCreate';
 import AdminPengajuan from './pages/AdminPengajuan';
 import AdminPengaturan from './pages/AdminPengaturan';
+import { supabase } from './lib/supabaseClient';
 
-// ProtectedRoute: checks if the admin is logged in
+// Helper function to check if the current session belongs to an admin
+const checkAdminStatus = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (error || !data || data.role !== 'admin') {
+    // If logged in but not an admin, sign out from the session
+    await supabase.auth.signOut();
+    return false;
+  }
+  return true;
+};
+
+// ProtectedRoute: check admin status, redirect to login if not authenticated or not an admin
 const ProtectedRoute = () => {
-  const isAuthenticated = localStorage.getItem('adminToken') === 'true';
-  return isAuthenticated ? <Outlet /> : <Navigate to="/admin/login" replace />;
+  const [isAdmin, setIsAdmin] = useState(undefined); // undefined = loading
+
+  useEffect(() => {
+    const verify = async () => {
+      const isAdm = await checkAdminStatus();
+      setIsAdmin(isAdm);
+    };
+    verify();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setIsAdmin(false);
+      } else if (session) {
+        const isAdm = await checkAdminStatus();
+        setIsAdmin(isAdm);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (isAdmin === undefined) {
+    // Loading, show spinner
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f9fb]">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return isAdmin ? <Outlet /> : <Navigate to="/admin/login" replace />;
 };
 
-// LoginRoute: checks if the admin is already logged in, redirecting them to dashboard
+// LoginRoute: if already admin, redirect to dashboard, otherwise show login
 const LoginRoute = () => {
-  const isAuthenticated = localStorage.getItem('adminToken') === 'true';
-  return isAuthenticated ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />;
+  const [isAdmin, setIsAdmin] = useState(undefined);
+
+  useEffect(() => {
+    checkAdminStatus().then(isAdm => setIsAdmin(isAdm));
+  }, []);
+
+  if (isAdmin === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f9fb]">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />;
 };
 
-// RootRoute: redirects root to dashboard if logged in, otherwise to login
+// RootRoute: redirect to dashboard if admin, otherwise redirect to login
 const RootRoute = () => {
-  const isAuthenticated = localStorage.getItem('adminToken') === 'true';
-  return <Navigate to={isAuthenticated ? "/admin/dashboard" : "/admin/login"} replace />;
+  const [isAdmin, setIsAdmin] = useState(undefined);
+
+  useEffect(() => {
+    checkAdminStatus().then(isAdm => setIsAdmin(isAdm));
+  }, []);
+
+  if (isAdmin === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f9fb]">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return <Navigate to={isAdmin ? "/admin/dashboard" : "/admin/login"} replace />;
 };
 
 function App() {

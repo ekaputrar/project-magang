@@ -1,6 +1,6 @@
 import React from 'react'
 
-const WelcomeCard = ({ user, onNavigateAbsensi }) => {
+const WelcomeCard = ({ user, peserta, onNavigateAbsensi }) => {
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Selamat Pagi'
@@ -27,7 +27,7 @@ const WelcomeCard = ({ user, onNavigateAbsensi }) => {
 
       <div className="relative z-10 max-w-lg">
         <h2 className="text-white font-bold text-xl md:text-2xl mb-1">
-          {getGreeting()}, {user?.name?.split(' ')[0] || 'Budi'}! 👋
+          {getGreeting()}, {(peserta?.nama || user?.name || 'Budi').split(' ')[0]}! 👋
         </h2>
         <p className="text-blue-200 text-sm leading-relaxed mb-6">
           Pantau aktivitas magang Anda, catat kehadiran, dan dapatkan informasi terbaru dari Dukcapil Sidoarjo. Tetap semangat dan produktif hari ini!

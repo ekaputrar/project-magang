@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { 
   ChevronRight, 
   Users, 
@@ -276,10 +277,19 @@ const ViewModal = ({ peserta, onClose }) => {
                 <div key={key}>
                   <p className="text-xs font-semibold text-gray-500 mb-1">{berkasLabels[key] || key}</p>
                   {files && files.length > 0 ? files.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1">
+                    <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-1 border border-gray-100 group hover:border-blue-200 hover:bg-blue-50 transition-colors">
                       <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
                       <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                      <span className="text-xs text-gray-400">{f.size}</span>
+                      <span className="text-xs text-gray-400 mr-2">{f.size}</span>
+                      {f.url && (
+                        <button
+                          onClick={() => window.open(f.url, '_blank')}
+                          className="text-gray-300 hover:text-blue-500 transition-colors"
+                          title="Unduh"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   )) : (
                     <p className="text-xs text-gray-300 ml-1 italic">Tidak ada file</p>
@@ -621,7 +631,7 @@ const Toast = ({ message, type, onClose }) => {
 
 // ─── Halaman Utama AdminPeserta ───────────────────────────────────────────────
 const AdminPeserta = () => {
-  const [data, setData]                     = useState(initialData);
+  const [data, setData]                     = useState([]);
   const [searchQuery, setSearchQuery]       = useState('');
   const [filterStatus, setFilterStatus]     = useState('Semua Status');
   const [filterInstansi, setFilterInstansi] = useState('Semua Instansi');
@@ -641,58 +651,99 @@ const AdminPeserta = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Baca data pendaftaran dari localStorage ────────────────────────────────
-  useEffect(() => {
-    const loadFromStorage = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem('pendaftaran_magang') || '[]');
-        if (stored.length > 0) {
-          setData(prev => {
-            const existingIds = new Set(prev.map(d => d.id));
-            const newEntries = stored.filter(s => !existingIds.has(s.id));
-            if (newEntries.length > 0) {
-              showToast(`🔔 ${newEntries.length} pendaftaran baru masuk!`, 'info');
-              return [...newEntries, ...prev];
-            }
-            return prev;
-          });
-          localStorage.removeItem('pendaftaran_magang');
-        }
-      } catch (err) {
-        console.error('Gagal membaca data pendaftaran:', err);
+  const fetchPeserta = async () => {
+    const { data: dbData, error } = await supabase
+      .from('pesertas')
+      .select('*, pengajuans(*, berkases(*))')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Gagal mengambil data peserta:', error);
+      return;
+    }
+
+    const mappedData = dbData.map(item => {
+      const berkasObj = {
+        surat_pengantar: [],
+        proposal: [],
+        cv: [],
+        portofolio: []
+      };
+
+      if (item.pengajuans && item.pengajuans.berkases) {
+        item.pengajuans.berkases.forEach(b => {
+          if (berkasObj[b.jenis]) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('berkas-pengajuan')
+              .getPublicUrl(b.storage_path);
+
+            berkasObj[b.jenis].push({
+              name: b.filename,
+              size: b.size || '-',
+              path: b.storage_path,
+              url: publicUrl
+            });
+          }
+        });
       }
-    };
 
-    loadFromStorage();
-    const interval = setInterval(loadFromStorage, 5000);
-    return () => clearInterval(interval);
-  }, []);
+      const name = item.nama || '';
+      const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+      const colors = ['bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-pink-500', 'bg-teal-500', 'bg-purple-500'];
+      const randomColor = colors[item.id % colors.length];
 
-  // ── Baca peserta yang disetujui dari halaman Pengajuan ─────────────────────
+      const fmt = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+      const months = (item.tanggal_mulai && item.tanggal_selesai)
+        ? Math.round((new Date(item.tanggal_selesai) - new Date(item.tanggal_mulai)) / (1000 * 60 * 60 * 24 * 30))
+        : 0;
+
+      return {
+        id: item.id,
+        pengajuan_id: item.pengajuan_id,
+        user_id: item.user_id,
+        nama: item.nama,
+        name: item.nama,
+        noHp: item.no_hp,
+        telepon: item.no_hp,
+        email: item.email,
+        identifier: item.email || 'Peserta',
+        asalInstansi: item.asal_instansi,
+        instansi: item.asal_instansi,
+        bidangTujuan: item.bidang_tujuan,
+        penempatan: item.bidang_tujuan,
+        tanggalMulai: item.tanggal_mulai,
+        tanggalSelesai: item.tanggal_selesai,
+        periode: (fmt(item.tanggal_mulai) && fmt(item.tanggal_selesai)) ? `${fmt(item.tanggalMulai)} - ${fmt(item.tanggalSelesai)}` : '-',
+        durasi: months > 0 ? `${months} Bulan` : '-',
+        status: item.status,
+        initials,
+        color: randomColor,
+        berkas: berkasObj,
+        tanggalDaftar: item.pengajuans ? item.pengajuans.tanggal_daftar : item.created_at
+      };
+    });
+
+    setData(mappedData);
+  };
+
+  // ── Load data from Supabase and listen to Realtime updates ──────────────────
   useEffect(() => {
-    const loadApproved = () => {
-      try {
-        const approved = JSON.parse(localStorage.getItem('approved_magang') || '[]');
-        if (approved.length > 0) {
-          setData(prev => {
-            const existingIds = new Set(prev.map(d => d.id));
-            const newEntries = approved.filter(s => !existingIds.has(s.id));
-            if (newEntries.length > 0) {
-              showToast(`✅ ${newEntries.length} peserta baru telah disetujui dan ditambahkan!`, 'success');
-              return [...newEntries, ...prev];
-            }
-            return prev;
-          });
-          localStorage.removeItem('approved_magang');
-        }
-      } catch (err) {
-        console.error('Gagal membaca data approved:', err);
-      }
-    };
+    fetchPeserta();
 
-    loadApproved();
-    const interval = setInterval(loadApproved, 3000);
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel('peserta-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pesertas' },
+        () => {
+          fetchPeserta();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Filter + Search
@@ -712,23 +763,69 @@ const AdminPeserta = () => {
   const instansiList = [...new Set(data.map(d => d.asalInstansi || d.instansi))];
 
   // Handlers
-  const handleSaveEdit = (updated) => {
-    setData(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
+  const handleSaveEdit = async (updated) => {
+    const { error } = await supabase
+      .from('pesertas')
+      .update({
+        nama: updated.nama,
+        no_hp: updated.noHp,
+        email: updated.email,
+        asal_instansi: updated.asalInstansi,
+        bidang_tujuan: updated.bidangTujuan,
+        tanggal_mulai: updated.tanggalMulai || null,
+        tanggal_selesai: updated.tanggalSelesai || null,
+        status: updated.status
+      })
+      .eq('id', updated.id);
+
+    if (error) {
+      alert('Gagal memperbarui data peserta: ' + error.message);
+      return;
+    }
+
     setEditPeserta(null);
-    showToast(`Data ${updated.nama || updated.name} berhasil diperbarui.`);
+    showToast(`Data ${updated.nama} berhasil diperbarui.`);
+    fetchPeserta();
   };
 
-  const handleDelete = (id) => {
-    const name = data.find(r => r.id === id)?.name;
-    setData(prev => prev.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    const { error } = await supabase
+      .from('pesertas')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert('Gagal menghapus data peserta: ' + error.message);
+      return;
+    }
+
     setDeletePeserta(null);
-    showToast(`Data ${name} berhasil dihapus.`, 'error');
+    showToast(`Data peserta berhasil dihapus.`, 'error');
+    fetchPeserta();
   };
 
-  const handleTambah = (newPeserta) => {
-    setData(prev => [newPeserta, ...prev]);
+  const handleTambah = async (newPeserta) => {
+    const { error } = await supabase
+      .from('pesertas')
+      .insert({
+        nama: newPeserta.nama,
+        no_hp: newPeserta.noHp,
+        email: newPeserta.email,
+        asal_instansi: newPeserta.asalInstansi,
+        bidang_tujuan: newPeserta.bidangTujuan,
+        tanggal_mulai: newPeserta.tanggalMulai || null,
+        tanggal_selesai: newPeserta.tanggalSelesai || null,
+        status: newPeserta.status
+      });
+
+    if (error) {
+      alert('Gagal menambahkan peserta: ' + error.message);
+      return;
+    }
+
     setShowTambah(false);
-    showToast(`Peserta ${newPeserta.name} berhasil ditambahkan!`);
+    showToast(`Peserta ${newPeserta.nama} berhasil ditambahkan!`);
+    fetchPeserta();
   };
 
   return (

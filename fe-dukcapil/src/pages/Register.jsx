@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
 const Register = ({ onBackToLogin }) => {
   const [form, setForm] = useState({
@@ -17,7 +18,7 @@ const Register = ({ onBackToLogin }) => {
     setError('')
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.phone || !form.password) {
       setError('Semua kolom wajib diisi.')
@@ -44,17 +45,31 @@ const Register = ({ onBackToLogin }) => {
     }
 
     setLoading(true)
+    setError('')
 
-    // Simulate API registration
+    const { data, error: authError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          name: form.name,
+          phone: form.phone,
+        }
+      }
+    })
+
+    setLoading(false)
+
+    if (authError) {
+      setError(authError.message || 'Pendaftaran gagal. Coba lagi.')
+      return
+    }
+
+    setSuccess('Pendaftaran berhasil! Silakan cek email Anda untuk konfirmasi, lalu login.')
+    
     setTimeout(() => {
-      setLoading(false)
-      setSuccess('Pendaftaran berhasil! Mengalihkan ke halaman login...')
-      
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        onBackToLogin()
-      }, 2000)
-    }, 1500)
+      onBackToLogin()
+    }, 3000)
   }
 
   return (
