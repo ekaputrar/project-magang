@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const Registration = ({ onBack }) => {
@@ -27,6 +27,45 @@ const Registration = ({ onBack }) => {
     tanggalMulai: '',
     tanggalSelesai: '',
   })
+
+  const [loadingSettings, setLoadingSettings] = useState(true)
+  const [pendaftaranTutup, setPendaftaranTutup] = useState(false)
+  const [kuotaPenuh, setKuotaPenuh] = useState(false)
+
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      setLoadingSettings(true)
+      try {
+        // 1. Fetch pendaftaran_aktif and kuota_maks
+        const { data: settings, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('*')
+
+        if (settingsError) throw settingsError
+
+        const isAktif = settings.find(s => s.key === 'pendaftaran_aktif')?.value === 'true'
+        const kuotaMaks = parseInt(settings.find(s => s.key === 'kuota_maks')?.value) || 50
+
+        setPendaftaranTutup(!isAktif)
+
+        // 2. Fetch current active participants count
+        const { count, error: countError } = await supabase
+          .from('pesertas')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'Aktif')
+
+        if (countError) throw countError
+
+        setKuotaPenuh(count >= kuotaMaks)
+      } catch (err) {
+        console.error('Error checking registration status:', err)
+      } finally {
+        setLoadingSettings(false)
+      }
+    }
+
+    checkRegistrationStatus()
+  }, [])
 
   const fileInputRef = useRef(null)
 
@@ -140,7 +179,8 @@ const Registration = ({ onBack }) => {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: profile } = user ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle() : { data: null }
       const isAdmin = localStorage.getItem('adminToken') === 'true' || (profile && profile.role === 'admin')
-      const userId = (user && !isAdmin) ? user.id : null
+      const isSameEmail = user && user.email && user.email.toLowerCase() === formData.email.trim().toLowerCase()
+      const userId = (user && !isAdmin && isSameEmail) ? user.id : null
 
       // 1. Insert into pengajuans
       const { error: insertError } = await supabase
@@ -215,6 +255,40 @@ const Registration = ({ onBack }) => {
           {stepNumber}
         </div>
         <div className="text-[10px] font-extrabold text-center mt-2 text-black leading-tight" dangerouslySetInnerHTML={{ __html: label }} />
+      </div>
+    )
+  }
+
+  if (loadingSettings) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#d1dff6] to-[#7398d5] flex items-center justify-center font-sans p-6">
+        <div className="w-12 h-12 border-4 border-[#2445a6] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (pendaftaranTutup || kuotaPenuh) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#d1dff6] to-[#7398d5] flex items-center justify-center font-sans p-6">
+        <div className="w-full max-w-[480px] bg-[#2445a6] rounded-[16px] p-8 text-center shadow-xl text-white">
+          <div className="w-20 h-20 bg-yellow-400 bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-extrabold mb-3">Pendaftaran Ditutup</h2>
+          <p className="text-blue-100 text-xs leading-relaxed mb-8">
+            {pendaftaranTutup 
+              ? 'Mohon maaf, pendaftaran peserta magang di Disdukcapil Kabupaten Sidoarjo saat ini sedang ditutup.' 
+              : 'Mohon maaf, kuota peserta magang aktif saat ini sudah penuh.'}
+          </p>
+          <button 
+            onClick={onBack}
+            className="w-full py-3 rounded-xl bg-white hover:bg-blue-50 text-[#2445a6] font-bold text-sm transition-all hover:shadow-lg"
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
       </div>
     )
   }

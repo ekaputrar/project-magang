@@ -849,6 +849,25 @@ const AdminPengajuan = () => {
       newUserId = null;
     }
 
+    // Check if newUserId belongs to a different email address in existing database records
+    if (newUserId) {
+      try {
+        const { data: mismatchRow } = await supabase
+          .from('pengajuans')
+          .select('email')
+          .eq('user_id', newUserId)
+          .neq('email', item.email)
+          .limit(1)
+          .maybeSingle();
+
+        if (mismatchRow) {
+          newUserId = null;
+        }
+      } catch (err) {
+        console.error('Error checking user_id email mismatch:', err);
+      }
+    }
+
     // If newUserId is null, check if this email already has a user_id linked in the database
     if (!newUserId) {
       try {

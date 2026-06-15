@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 import { 
   User, 
   Building, 
@@ -12,18 +14,68 @@ import {
 } from 'lucide-react';
 
 const AdminPengaturan = () => {
+  const { adminProfile, refreshAdminProfile } = useOutletContext();
   const [activeTab, setActiveTab] = useState('profil');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success'); // 'success' | 'error'
 
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const [savingSystem, setSavingSystem] = useState(false);
+  const [loadingSystem, setLoadingSystem] = useState(false);
+
+  useEffect(() => {
+    const fetchSystemSettings = async () => {
+      setLoadingSystem(true);
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('*');
+        if (!error && data && data.length > 0) {
+          const instansi = data.find(s => s.key === 'instansi')?.value || 'Disdukcapil Kabupaten Sidoarjo';
+          const kuota = parseInt(data.find(s => s.key === 'kuota_maks')?.value) || 50;
+          const pendaftaranAktif = (data.find(s => s.key === 'pendaftaran_aktif')?.value === 'true');
+          const jamMasuk = data.find(s => s.key === 'jam_masuk')?.value || '08:00';
+          const jamPulang = data.find(s => s.key === 'jam_pulang')?.value || '16:00';
+
+          setSystemData({
+            instansi,
+            kuota,
+            pendaftaranAktif,
+            jamMasuk,
+            jamPulang
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching system settings:', err);
+      } finally {
+        setLoadingSystem(false);
+      }
+    };
+    fetchSystemSettings();
+  }, []);
+
   // Profil States
   const [profileData, setProfileData] = useState({
-    nama: 'Budi Santoso',
-    email: 'admin@sidoarjo.go.id',
-    telepon: '081234567890',
+    nama: '',
+    email: '',
+    telepon: '',
     avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
   });
+
+  useEffect(() => {
+    if (adminProfile) {
+      setProfileData({
+        nama: adminProfile.nama || '',
+        email: adminProfile.email || '',
+        telepon: adminProfile.telepon || '',
+        avatar: adminProfile.avatar || 'https://randomuser.me/api/portraits/men/32.jpg'
+      });
+    }
+  }, [adminProfile]);
 
   // Sistem States
   const [systemData, setSystemData] = useState({
@@ -50,25 +102,75 @@ const AdminPengaturan = () => {
     }, 3000);
   };
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
     if (!profileData.nama || !profileData.email || !profileData.telepon) {
       triggerToast('Semua field profil wajib diisi!', 'error');
       return;
     }
-    triggerToast('Profil berhasil diperbarui!');
+    setSavingProfile(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sesi user tidak ditemukan.');
+
+      // 1. Update profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: profileData.nama,
+          phone: profileData.telepon
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 2. If email changed, update auth.users
+      if (profileData.email !== user.email) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: profileData.email });
+        if (emailError) throw emailError;
+        triggerToast('Profil & link verifikasi email dikirim!');
+      } else {
+        triggerToast('Profil berhasil diperbarui!');
+      }
+
+      if (refreshAdminProfile) await refreshAdminProfile();
+    } catch (err) {
+      triggerToast('Gagal memperbarui profil: ' + err.message, 'error');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const handleSystemSubmit = (e) => {
+  const handleSystemSubmit = async (e) => {
     e.preventDefault();
     if (!systemData.instansi || !systemData.kuota || !systemData.jamMasuk || !systemData.jamPulang) {
       triggerToast('Semua field konfigurasi wajib diisi!', 'error');
       return;
     }
-    triggerToast('Konfigurasi sistem berhasil disimpan!');
+    setSavingSystem(true);
+    try {
+      const updates = [
+        { key: 'instansi', value: systemData.instansi },
+        { key: 'kuota_maks', value: String(systemData.kuota) },
+        { key: 'pendaftaran_aktif', value: String(systemData.pendaftaranAktif) },
+        { key: 'jam_masuk', value: systemData.jamMasuk },
+        { key: 'jam_pulang', value: systemData.jamPulang }
+      ];
+
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert(updates);
+
+      if (error) throw error;
+      triggerToast('Konfigurasi sistem berhasil disimpan!');
+    } catch (err) {
+      triggerToast('Gagal menyimpan konfigurasi: ' + err.message, 'error');
+    } finally {
+      setSavingSystem(false);
+    }
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmPassword } = passwordData;
     
@@ -77,23 +179,93 @@ const AdminPengaturan = () => {
       return;
     }
 
-    if (currentPassword !== 'admin') {
-      triggerToast('Password saat ini salah!', 'error');
-      return;
-    }
+    setSavingPassword(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sesi user tidak ditemukan.');
 
-    if (newPassword !== confirmPassword) {
-      triggerToast('Konfirmasi password tidak cocok!', 'error');
-      return;
-    }
+      // Verify current password by signing in again
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      });
 
-    triggerToast('Password berhasil diperbarui!');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      if (verifyError) {
+        triggerToast('Password saat ini salah!', 'error');
+        setSavingPassword(false);
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        triggerToast('Password baru minimal 6 karakter!', 'error');
+        setSavingPassword(false);
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        triggerToast('Konfirmasi password tidak cocok!', 'error');
+        setSavingPassword(false);
+        return;
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      triggerToast('Password berhasil diperbarui!');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      triggerToast('Gagal memperbarui password: ' + err.message, 'error');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
-  const handleAvatarChange = (e) => {
-    // Simulating file upload
-    triggerToast('Foto profil berhasil diunggah!');
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      triggerToast('Ukuran foto maksimal 2MB.', 'error');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sesi user tidak ditemukan.');
+
+      const ext = file.name.split('.').pop();
+      const path = `avatars/admin_${user.id}.${ext}`;
+
+      // Upload to berkas-pengajuan storage bucket
+      const { error: uploadError } = await supabase.storage
+        .from('berkas-pengajuan')
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('berkas-pengajuan')
+        .getPublicUrl(path);
+
+      // Save to user metadata
+      const { error: metaError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      if (metaError) throw metaError;
+
+      triggerToast('Foto profil berhasil diperbarui!');
+      if (refreshAdminProfile) await refreshAdminProfile();
+    } catch (err) {
+      triggerToast('Gagal mengunggah foto: ' + err.message, 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   return (
@@ -169,13 +341,18 @@ const AdminPengaturan = () => {
                     alt="Admin Avatar" 
                     className="w-24 h-24 rounded-full object-cover border-4 border-gray-50 shadow-inner group-hover:opacity-90 transition-opacity"
                   />
-                  <label htmlFor="avatar-file" className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer shadow-md transition-all hover:scale-105">
-                    <Camera className="w-4 h-4" />
+                  <label htmlFor="avatar-file" className={`absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer shadow-md transition-all hover:scale-105 ${uploadingAvatar ? 'opacity-50 cursor-wait' : ''}`}>
+                    {uploadingAvatar ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
                     <input 
                       type="file" 
                       id="avatar-file" 
                       className="hidden" 
                       accept="image/*"
+                      disabled={uploadingAvatar}
                       onChange={handleAvatarChange}
                     />
                   </label>
@@ -232,10 +409,15 @@ const AdminPengaturan = () => {
               <div className="flex justify-end pt-4 border-t border-gray-100">
                 <button 
                   type="submit"
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5"
+                  disabled={savingProfile}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Simpan Perubahan</span>
+                  {savingProfile ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>{savingProfile ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                 </button>
               </div>
             </form>
@@ -334,10 +516,15 @@ const AdminPengaturan = () => {
               <div className="flex justify-end pt-4 border-t border-gray-100">
                 <button 
                   type="submit"
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5"
+                  disabled={savingSystem || loadingSystem}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Simpan Perubahan</span>
+                  {savingSystem ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>{savingSystem ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                 </button>
               </div>
             </form>
@@ -401,10 +588,15 @@ const AdminPengaturan = () => {
               <div className="flex justify-end pt-4 border-t border-gray-100">
                 <button 
                   type="submit"
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5"
+                  disabled={savingPassword}
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-[0_4px_12px_rgba(59,130,246,0.12)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Perbarui Password</span>
+                  {savingPassword ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>{savingPassword ? 'Memperbarui...' : 'Perbarui Password'}</span>
                 </button>
               </div>
             </form>

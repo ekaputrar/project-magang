@@ -385,7 +385,28 @@ const AbsensiPage = ({ user }) => {
   const [showIzinModal, setShowIzinModal] = useState(false)
   const [page, setPage] = useState(1)
   const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [jamMasukLimit, setJamMasukLimit] = useState('08:00')
+  const [jamPulangLimit, setJamPulangLimit] = useState('16:00')
   const PER_PAGE = 6
+
+  useEffect(() => {
+    const fetchSystemSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('*')
+        if (!error && data && data.length > 0) {
+          const masuk = data.find(s => s.key === 'jam_masuk')?.value || '08:00'
+          const pulang = data.find(s => s.key === 'jam_pulang')?.value || '16:00'
+          setJamMasukLimit(masuk)
+          setJamPulangLimit(pulang)
+        }
+      } catch (err) {
+        console.error('Error fetching system settings:', err)
+      }
+    }
+    fetchSystemSettings()
+  }, [])
 
   // Fetch data peserta aktif berdasarkan user_id (dengan self-healing fallback ke email)
   const fetchPeserta = async () => {
@@ -502,7 +523,7 @@ const AbsensiPage = ({ user }) => {
   const getDisplayStatus = (log) => {
     if (log.status === 'Izin' || log.status === 'Sakit') return 'Izin'
     if (log.status === 'Alpa') return 'Absen'
-    if (log.status === 'Hadir' && log.check_in && log.check_in > '08:00:00') return 'Terlambat'
+    if (log.status === 'Hadir' && log.check_in && log.check_in > (jamMasukLimit + ':00')) return 'Terlambat'
     return 'Hadir'
   }
 
@@ -807,7 +828,7 @@ const AbsensiPage = ({ user }) => {
               )}
               <span>Check In</span>
               <span className={`text-xs font-normal mt-1 ${checkInTime ? 'text-green-500' : 'text-green-100'}`}>
-                {checkInTime ? `✓ ${formatTimeShort(checkInTime)}` : 'Batas: 08:00 WIB'}
+                {checkInTime ? `✓ ${formatTimeShort(checkInTime)}` : `Batas: ${jamMasukLimit} WIB`}
               </span>
             </button>
 
@@ -836,7 +857,7 @@ const AbsensiPage = ({ user }) => {
               )}
               <span>Check Out</span>
               <span className={`text-xs font-normal mt-1 ${checkOutTime ? 'text-blue-500' : !checkInTime ? 'text-gray-300' : 'text-blue-200'}`}>
-                {checkOutTime ? `✓ ${formatTimeShort(checkOutTime)}` : 'Batas: 16:00 WIB'}
+                {checkOutTime ? `✓ ${formatTimeShort(checkOutTime)}` : `Batas: ${jamPulangLimit} WIB`}
               </span>
             </button>
           </div>

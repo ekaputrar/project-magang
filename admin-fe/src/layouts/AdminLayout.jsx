@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { 
@@ -20,6 +20,39 @@ const AdminLayout = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
+
+  const [adminProfile, setAdminProfile] = useState({
+    nama: 'Budi Santoso',
+    email: 'admin@sidoarjo.go.id',
+    telepon: '081234567890',
+    avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+  });
+
+  const fetchAdminProfile = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      setAdminProfile({
+        nama: profile?.name || user?.user_metadata?.name || 'Budi Santoso',
+        email: user?.email || 'admin@sidoarjo.go.id',
+        telepon: profile?.phone || user?.user_metadata?.phone || '081234567890',
+        avatar: user?.user_metadata?.avatar_url || 'https://randomuser.me/api/portraits/men/32.jpg'
+      });
+    } catch (err) {
+      console.error('Error fetching admin profile:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAdminProfile();
+  }, [fetchAdminProfile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -126,12 +159,12 @@ const AdminLayout = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <img 
-                src="https://randomuser.me/api/portraits/men/32.jpg" 
+                src={adminProfile.avatar} 
                 alt="Profile" 
                 className="w-10 h-10 rounded-full object-cover mr-3"
               />
               <div>
-                <p className="text-sm font-semibold text-gray-800 leading-tight">Budi Santoso</p>
+                <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[120px]">{adminProfile.nama}</p>
                 <p className="text-xs text-gray-500">Admin Utama</p>
               </div>
             </div>
@@ -229,17 +262,17 @@ const AdminLayout = () => {
                   setShowNotifications(false);
                 }}
               >
-                Admin Sidoarjo
+                {adminProfile.nama.split(' ')[0]}
                 <ChevronDown className="w-4 h-4 ml-2 text-gray-400" />
               </button>
 
               {showProfileMenu && (
                 <div className="absolute right-0 mt-3 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-50 py-2">
                   <div className="px-4 py-2 border-b border-gray-100 mb-1">
-                    <p className="text-sm font-semibold text-gray-800">Admin Sidoarjo</p>
-                    <p className="text-xs text-gray-500">admin@sidoarjo.go.id</p>
+                    <p className="text-sm font-semibold text-gray-800">{adminProfile.nama}</p>
+                    <p className="text-xs text-gray-500 truncate">{adminProfile.email}</p>
                   </div>
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center" onClick={() => alert('Membuka Pengaturan')}>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors flex items-center" onClick={() => { navigate('/admin/pengaturan'); setShowProfileMenu(false); }}>
                     <Settings className="w-4 h-4 mr-2" /> Pengaturan
                   </button>
                   <button 
@@ -256,7 +289,7 @@ const AdminLayout = () => {
 
         {/* Dynamic Content */}
         <main className="flex-1 overflow-y-auto p-8">
-          <Outlet />
+          <Outlet context={{ adminProfile, refreshAdminProfile: fetchAdminProfile }} />
         </main>
       </div>
     </div>
