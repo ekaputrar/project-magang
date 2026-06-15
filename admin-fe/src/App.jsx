@@ -115,7 +115,7 @@ function App() {
         {/* Protected administrative routes */}
         <Route element={<ProtectedRoute />}>
           {/* Fullscreen Print Route */}
-          <Route path="/print-spt" element={<AdminSuratTugasPrint />} />
+          <Route path="/print-spt/:id" element={<AdminSuratTugasPrint />} />
           
           {/* Admin Routes with Layout */}
           <Route path="/admin" element={<AdminLayout />}>

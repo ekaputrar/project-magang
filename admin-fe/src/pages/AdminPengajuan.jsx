@@ -830,7 +830,7 @@ const AdminPengajuan = () => {
     
     // Generate a secure random password for the participant
     const generateRandomPassword = () => {
-      const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$';
+      const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let pass = '';
       for (let i = 0; i < 8; i++) {
         pass += chars.charAt(Math.floor(Math.random() * chars.length));
