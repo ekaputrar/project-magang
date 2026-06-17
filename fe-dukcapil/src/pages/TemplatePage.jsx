@@ -1,61 +1,94 @@
 import React, { useState, useMemo } from 'react'
+import { jsPDF } from 'jspdf'
+import lambangImg from '../assets/LambangSidoarjo.png'
 
 // ─── Data template ────────────────────────────────────────────────────────────
 const templates = [
   {
     id: 1,
-    title: 'Tamplate Akta Kelahiran',
-    desc: 'Surat resmi keterangan pelaksanaan program magang di Dukcapil Sidoarjo.',
+    title: 'Template Penolakan - Akta Kelahiran',
+    desc: 'Template surat penolakan pengajuan akta kelahiran beserta alasan dan arahan perbaikan.',
     format: 'PDF',
-    updated: '10 Apr 2026',
+    updated: '17 Jun 2026',
     downloads: 82,
     isNew: false,
     color: 'from-red-500 to-red-600',
-    content: `SURAT KETERANGAN MAGANG\nNomor: 474/___/404.6.2/2026\n\nYang bertanda tangan di bawah ini, Kepala Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo, menerangkan bahwa:\n\nNama               : ____________________________\nNIM/NIS            : ____________________________\nProgram Studi      : ____________________________\nInstansi Asal      : ____________________________\nPeriode Magang     : ____________________________\n\nTelah melaksanakan kegiatan magang di Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo dengan baik dan penuh tanggung jawab.\n\nDemikian surat keterangan ini dibuat untuk digunakan sebagaimana mestinya.\n\n\t\t\t\t\tSidoarjo, ________________ 2026\n\t\t\t\t\tKepala Dinas Dukcapil Sidoarjo,\n\n\n\n\t\t\t\t\t_________________________________\n\t\t\t\t\tNIP. ____________________________`,
+    content: `[Kop Instansi / Plavon Dukcapil]
+
+Terima kasih telah menggunakan layanan Plavon Dukcapil. Mohon maaf, berkas pengajuan akta kelahiran Anda ada yang harus dikoordinasikan/dilengkapi:
+
+Persyaratan Tidak Lengkap: Pengajuan akta kelahiran tidak dapat diproses karena tidak melampirkan semua persyaratan pembuatan akta kelahiran. Syarat pembuatan Akta Kelahiran adalah: KTP ayah, KTP ibu, KTP saksi, Surat kelahiran dari rumah sakit/bidan/dsb, Surat Nikah, dan Kartu Keluarga. Silakan melakukan pengajuan ulang dengan syarat yang lengkap. Sesuai dengan Surat Dirjen Dukcapil tentang tatacara pelayanan adminduk, dokumen pendukung yang dilampirkan harus hasil scan/foto dari dokumen asli.
+
+Data Ganda: Pengajuan akta kelahiran tidak dapat diproses karena anak sudah mempunyai akta kelahiran. Jika Akta Kelahiran ada perbaikan/hilang, silakan melakukan pengajuan melalui Plavon Dukcapil pada menu Akta Kelahiran kemudian pilih Perbaikan/Kehilangan.
+
+Aturan Penamaan (Permendagri 73/2022): Kementerian Dalam Negeri mengeluarkan aturan terbaru terkait nama dalam dokumen kependudukan, yaitu: tidak boleh menyingkat nama kecuali tidak diartikan lain, nama tidak boleh menggunakan tanda baca, tidak boleh mencantumkan gelar pendidikan dan keagamaan, serta jumlah kata paling sedikit 2 (dua) kata. Silakan perbaiki pengajuan Anda.
+
+Perbedaan Data Nama: Berkas persyaratan yang dilampirkan terdapat perbedaan elemen nama. Dimohon untuk melampirkan ijazah dan/atau akta kelahiran ayah/ibu sebagai data pendukung. Silakan membuat dan mengunggah Surat Pernyataan Nama Yang Dikehendaki dan melakukan pengajuan ulang.
+
+Status Perkawinan Orang Tua: Dikarenakan anak pertama lahir sebelum perkawinan sah secara negara, mohon konfirmasi apakah pernah dilakukan Sidang Penetapan Asal Usul Anak? Lampirkan salinan putusan pengadilan jika ada.
+
+Kelengkapan Surat Pernyataan (SPTJM): Semua surat pernyataan (SPTJM Kebenaran Data Kelahiran, SPTJM Kebenaran Pasangan Suami Istri, dan Surat Pernyataan Urutan Anak) wajib diisi lengkap, ditandatangani, dan dibubuhi meterai Rp10.000.
+
+Kelengkapan berkas kami tunggu sampai dengan tanggal [TANGGAL] pukul [WAKTU] WIB.`,
   },
   {
     id: 2,
-    title: 'Tamplate Pindah Datang',
-    desc: 'Template laporan akhir komprehensif yang wajib diserahkan sebelum selesai masa magang.',
+    title: 'Template Penolakan - Pindah Datang',
+    desc: 'Template surat penolakan pengajuan pindah datang beserta alasan dan arahan perbaikan.',
     format: 'PDF',
-    updated: '15 Apr 2026',
+    updated: '17 Jun 2026',
     downloads: 18,
     isNew: true,
     color: 'from-red-500 to-red-600',
-    content: `FORMULIR PINDAH DATANG\nDinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo\n\n─────────────────────────────────────────────────\nDATA PEMOHON\n─────────────────────────────────────────────────\nNama Lengkap    : ____________________________\nNIK             : ____________________________\nJenis Kelamin   : ____________________________\nTempat/Tgl Lahir: ____________________________\nAgama           : ____________________________\nStatus Perkawinan: ___________________________\nPendidikan      : ____________________________\nPekerjaan       : ____________________________\n\n─────────────────────────────────────────────────\nALAMAT ASAL\n─────────────────────────────────────────────────\nProvinsi        : ____________________________\nKab/Kota        : ____________________________\nKecamatan       : ____________________________\nKelurahan/Desa  : ____________________________\nRT/RW           : ____________________________\nAlamat Lengkap  : ____________________________\n\n─────────────────────────────────────────────────\nALAMAT TUJUAN\n─────────────────────────────────────────────────\nProvinsi        : ____________________________\nKab/Kota        : ____________________________\nKecamatan       : ____________________________\nKelurahan/Desa  : ____________________________\nRT/RW           : ____________________________\nAlamat Lengkap  : ____________________________\nAlasan Pindah   : ____________________________`,
+    content: `[Kop Instansi / Plavon Dukcapil]
+
+Terima kasih telah menggunakan layanan Plavon Dukcapil. Mohon maaf, berkas pengajuan Pindah Datang Anda belum dapat diproses dan harus dikoordinasikan/dilengkapi:
+
+Persyaratan Tidak Lengkap: Pengajuan tidak dapat diproses karena tidak melampirkan semua dokumen persyaratan kepindahan (seperti SKPWNI dari daerah asal, Kartu Keluarga asli, atau KTP-el). Silakan melengkapi berkas yang dibutuhkan.
+
+Dokumen Tidak Terbaca: Sesuai arahan pelayanan adminduk secara daring, dokumen pendukung yang dilampirkan harus berupa hasil scan/foto berwarna dari dokumen asli yang terbaca dengan jelas. Silakan foto dan unggah ulang dokumen Anda.
+
+Kelengkapan berkas kami tunggu sampai dengan tanggal [TANGGAL] pukul [WAKTU] WIB.`,
   },
   {
     id: 3,
-    title: 'Tamplate Akta Kematian',
-    desc: 'Formulir penilaian kinerja peserta magang oleh pembimbing lapangan setiap bulan.',
+    title: 'Template Penolakan - Akta Kematian',
+    desc: 'Template surat penolakan pengajuan akta kematian beserta alasan dan arahan perbaikan.',
     format: 'PDF',
-    updated: '08 Apr 2026',
+    updated: '17 Jun 2026',
     downloads: 67,
     isNew: false,
     color: 'from-red-500 to-red-600',
-    content: `FORMULIR AKTA KEMATIAN\nDinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo\n\n─────────────────────────────────────────────────\nDATA ALMARHUM/ALMARHUMAH\n─────────────────────────────────────────────────\nNama Lengkap    : ____________________________\nNIK             : ____________________________\nJenis Kelamin   : ____________________________\nTempat/Tgl Lahir: ____________________________\nAgama           : ____________________________\nStatus Perkawinan: ___________________________\nAlamat Terakhir : ____________________________\n\n─────────────────────────────────────────────────\nDATA KEMATIAN\n─────────────────────────────────────────────────\nHari/Tanggal    : ____________________________\nPukul           : ____________________________\nTempat Meninggal: ____________________________\nSebab Kematian  : ____________________________\n\n─────────────────────────────────────────────────\nDATA PELAPOR\n─────────────────────────────────────────────────\nNama            : ____________________________\nNIK             : ____________________________\nHubungan        : ____________________________\nNo. Telepon     : ____________________________`,
+    content: `[Kop Instansi / Plavon Dukcapil]
+
+Terima kasih telah menggunakan layanan Plavon Dukcapil. Mohon maaf, berkas pengajuan Anda ada yang harus dikoordinasikan/dilengkapi terkait pelaporan kematian:
+
+Surat Kematian Tidak Tersedia/Tidak Jelas: Jika terdapat anggota keluarga di dalam Kartu Keluarga yang telah meninggal dunia, harap melampirkan Surat Keterangan Kematian / Akta Kematian.
+
+Kualitas Dokumen: Silakan foto ulang dari dokumen aslinya (Berwarna) untuk Surat Keterangan Kematian dari Desa/Kelurahan.
+
+Penggunaan Formulir Tambahan: Jika surat keterangan resmi tidak tersedia, silakan hubungi admin untuk mendapatkan dan mengisi file SPTJM Data Kematian bermeterai Rp10.000.
+
+Kelengkapan berkas kami tunggu sampai dengan tanggal [TANGGAL] pukul [WAKTU] WIB.`,
   },
   {
     id: 4,
-    title: 'Tamplate Pindah Keluar',
-    desc: 'Template laporan akhir komprehensif yang wajib diserahkan sebelum selesai masa magang.',
+    title: 'Template Penolakan - Pindah Keluar',
+    desc: 'Template surat penolakan pengajuan pindah keluar beserta alasan dan arahan perbaikan.',
     format: 'PDF',
-    updated: '15 Apr 2026',
+    updated: '17 Jun 2026',
     downloads: 18,
     isNew: true,
     color: 'from-red-500 to-red-600',
-    content: `FORMULIR PINDAH KELUAR\nDinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo\n\n─────────────────────────────────────────────────\nDATA PEMOHON\n─────────────────────────────────────────────────\nNama Lengkap    : ____________________________\nNIK             : ____________________________\nJenis Kelamin   : ____________________________\nTempat/Tgl Lahir: ____________________________\nNo. KK          : ____________________________\n\n─────────────────────────────────────────────────\nALAMAT ASAL (SIDOARJO)\n─────────────────────────────────────────────────\nKecamatan       : ____________________________\nKelurahan/Desa  : ____________________________\nRT/RW           : ____________________________\nAlamat Lengkap  : ____________________________\n\n─────────────────────────────────────────────────\nALAMAT TUJUAN\n─────────────────────────────────────────────────\nProvinsi        : ____________________________\nKab/Kota        : ____________________________\nKecamatan       : ____________________________\nKelurahan/Desa  : ____________________________\nRT/RW           : ____________________________\nAlamat Lengkap  : ____________________________\nAlasan Pindah   : ____________________________\nRencana Tinggal : ____________________________`,
-  },
-  {
-    id: 5,
-    title: 'Tamplate Laporan Akhir',
-    desc: 'Template laporan akhir komprehensif yang wajib diserahkan sebelum selesai masa magang.',
-    format: 'PDF',
-    updated: '15 Apr 2026',
-    downloads: 18,
-    isNew: true,
-    color: 'from-red-500 to-red-600',
-    content: `LAPORAN AKHIR MAGANG\nDinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo\nTahun 2026\n\n─────────────────────────────────────────────────\nHALAMAN JUDUL\n─────────────────────────────────────────────────\n\nJUDUL LAPORAN:\n___________________________________________\n\nDisusun Oleh:\nNama   : ____________________________\nNIM    : ____________________________\nProdi  : ____________________________\nFakultas: ___________________________\nUniversitas: _________________________\n\n─────────────────────────────────────────────────\nBAB I - PENDAHULUAN\n─────────────────────────────────────────────────\n1.1 Latar Belakang\n[Isi di sini]\n\n1.2 Tujuan Magang\n[Isi di sini]\n\n1.3 Manfaat Magang\n[Isi di sini]\n\n─────────────────────────────────────────────────\nBAB II - GAMBARAN UMUM INSTANSI\n─────────────────────────────────────────────────\n[Isi di sini]\n\n─────────────────────────────────────────────────\nBAB III - KEGIATAN MAGANG\n─────────────────────────────────────────────────\n[Isi di sini]\n\n─────────────────────────────────────────────────\nBAB IV - PENUTUP\n─────────────────────────────────────────────────\n[Kesimpulan dan Saran]`,
+    content: `[Kop Instansi / Plavon Dukcapil]
+
+Terima kasih telah menggunakan layanan Plavon Dukcapil. Mohon maaf, berkas pengajuan Pindah Keluar Anda belum dapat diproses dan harus dikoordinasikan/dilengkapi:
+
+Persyaratan Tidak Lengkap: Pengajuan tidak dapat diproses karena tidak melampirkan semua dokumen persyaratan kepindahan (seperti SKPWNI dari daerah asal, Kartu Keluarga asli, atau KTP-el). Silakan melengkapi berkas yang dibutuhkan.
+
+Dokumen Tidak Terbaca: Sesuai arahan pelayanan adminduk secara daring, dokumen pendukung yang dilampirkan harus berupa hasil scan/foto berwarna dari dokumen asli yang terbaca dengan jelas. Silakan foto dan unggah ulang dokumen Anda.
+
+Kelengkapan berkas kami tunggu sampai dengan tanggal [TANGGAL] pukul [WAKTU] WIB.`,
   },
 ]
 
@@ -112,11 +145,11 @@ const PreviewModal = ({ template, onClose }) => {
             {/* Letterhead */}
             <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
               <div className="flex items-center justify-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-primary-800 rounded-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
+                <img
+                  src={lambangImg}
+                  alt="Lambang Kabupaten Sidoarjo"
+                  className="w-12 h-12 object-contain flex-shrink-0"
+                />
                 <div className="text-left">
                   <p className="text-xs font-bold text-gray-800 uppercase">Pemerintah Kabupaten Sidoarjo</p>
                   <p className="text-xs text-gray-600">Dinas Kependudukan dan Pencatatan Sipil</p>
@@ -159,20 +192,134 @@ const PreviewModal = ({ template, onClose }) => {
 }
 
 // ─── Download helper ──────────────────────────────────────────────────────────
-const downloadTemplate = (template) => {
-  const header = `PEMERINTAH KABUPATEN SIDOARJO\nDINAS KEPENDUDUKAN DAN PENCATATAN SIPIL\nJl. Gubernur Suryo No.1, Sidoarjo, Jawa Timur\n${'═'.repeat(60)}\n\n`
-  const footer = `\n\n${'─'.repeat(60)}\nDokumen ini diterbitkan oleh:\nDinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo\nDiperbarui: ${template.updated} | Format: ${template.format}\n${'─'.repeat(60)}`
-  const content = header + template.content + footer
+const downloadTemplate = async (template) => {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginLeft = 20
+  const marginRight = 20
+  const maxWidth = pageWidth - marginLeft - marginRight
+  let y = 20
 
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `${template.title.replace(/\s+/g, '_')}_Dukcapil_Sidoarjo.txt`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  // ── Helper: add new page if needed ──
+  const checkPage = (needed = 10) => {
+    if (y + needed > pageHeight - 25) {
+      doc.addPage()
+      y = 20
+    }
+  }
+
+  // Load image
+  const imgData = await new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = lambangImg;
+  });
+
+  // ── Header / Kop Instansi ──
+  if (imgData) {
+    doc.addImage(imgData, 'PNG', 20, 15, 20, 20);
+  }
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text('PEMERINTAH KABUPATEN SIDOARJO', pageWidth / 2, y, { align: 'center' })
+  y += 6
+  doc.setFontSize(11)
+  doc.text('DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL', pageWidth / 2, y, { align: 'center' })
+  y += 5
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text('Jl. Gubernur Suryo No.1, Sidoarjo, Jawa Timur', pageWidth / 2, y, { align: 'center' })
+  y += 4
+
+  if (y < 38) y = 38;
+
+  // Horizontal rule
+  doc.setLineWidth(0.8)
+  doc.line(marginLeft, y, pageWidth - marginRight, y)
+  y += 2
+  doc.setLineWidth(0.3)
+  doc.line(marginLeft, y, pageWidth - marginRight, y)
+  y += 8
+
+  // ── Title ──
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text(template.title.toUpperCase(), pageWidth / 2, y, { align: 'center' })
+  y += 10
+
+  // ── Body content ──
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+
+  const paragraphs = template.content.split('\n')
+  paragraphs.forEach((para) => {
+    if (para.trim() === '') {
+      y += 4
+      return
+    }
+    // Check if paragraph starts with a "label:" pattern for bold prefix
+    const labelMatch = para.match(/^([A-Za-z\s()\/0-9]+:)\s*(.*)/)
+    if (labelMatch && labelMatch[1].length < 60) {
+      checkPage(14)
+      // Bold label
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      const labelLines = doc.splitTextToSize(labelMatch[1], maxWidth)
+      labelLines.forEach((line) => {
+        checkPage(6)
+        doc.text(line, marginLeft, y)
+        y += 5
+      })
+      // Normal content after label
+      if (labelMatch[2].trim()) {
+        doc.setFont('helvetica', 'normal')
+        const contentLines = doc.splitTextToSize(labelMatch[2], maxWidth)
+        contentLines.forEach((line) => {
+          checkPage(6)
+          doc.text(line, marginLeft, y)
+          y += 5
+        })
+      }
+      y += 2
+    } else {
+      // Regular paragraph
+      doc.setFont('helvetica', 'normal')
+      const lines = doc.splitTextToSize(para, maxWidth)
+      lines.forEach((line) => {
+        checkPage(6)
+        doc.text(line, marginLeft, y)
+        y += 5
+      })
+      y += 2
+    }
+  })
+
+  // ── Footer ──
+  const footerY = pageHeight - 15
+  doc.setLineWidth(0.3)
+  doc.line(marginLeft, footerY - 4, pageWidth - marginRight, footerY - 4)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(8)
+  doc.text(
+    `Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo | Diperbarui: ${template.updated}`,
+    pageWidth / 2,
+    footerY,
+    { align: 'center' }
+  )
+
+  // ── Save ──
+  doc.save(`${template.title.replace(/\s+/g, '_')}_Dukcapil_Sidoarjo.pdf`)
 }
 
 // ─── PDF Icon SVG ─────────────────────────────────────────────────────────────
@@ -189,12 +336,13 @@ const PdfIcon = () => (
 const TemplateCard = ({ template, onPreview, viewMode }) => {
   const [downloading, setDownloading] = useState(false)
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setDownloading(true)
-    setTimeout(() => {
-      downloadTemplate(template)
+    try {
+      await downloadTemplate(template)
+    } finally {
       setDownloading(false)
-    }, 800)
+    }
   }
 
   if (viewMode === 'list') {
@@ -341,23 +489,14 @@ const TemplateCard = ({ template, onPreview, viewMode }) => {
 // ─── Halaman Template Operator ────────────────────────────────────────────────
 const TemplatePage = () => {
   const [search, setSearch] = useState('')
-  const [filterType, setFilterType] = useState('Semua Tipe')
   const [viewMode, setViewMode] = useState('grid')
   const [previewTemplate, setPreviewTemplate] = useState(null)
-
-  const totalDownloads = templates.reduce((s, t) => s + t.downloads, 0)
-  const pdfCount  = templates.filter(t => t.format === 'PDF').length
-  const wordCount = templates.filter(t => t.format === 'Word').length
 
   const filtered = useMemo(() => templates.filter(t => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
                         t.desc.toLowerCase().includes(search.toLowerCase())
-    const matchType = filterType === 'Semua Tipe' ||
-                      (filterType === 'PDF' && t.format === 'PDF') ||
-                      (filterType === 'Word' && t.format === 'Word') ||
-                      (filterType === 'Baru' && t.isNew)
-    return matchSearch && matchType
-  }), [search, filterType])
+    return matchSearch
+  }), [search])
 
   return (
     <div className="space-y-5">
@@ -373,56 +512,23 @@ const TemplatePage = () => {
           <p className="text-sm text-gray-400 mt-0.5">Unduh dan kelola template dokumen resmi serta alat bantu operator sistem Plavon</p>
         </div>
 
-        {/* Search + Filter */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Search */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Cari template dokumen..."
-              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-48"
-            />
+        {/* Search */}
+        <div className="relative flex-shrink-0">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
-
-          {/* Filter dropdown */}
-          <select
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
-            className="border border-gray-200 rounded-xl text-xs px-3 py-2 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-          >
-            {['Semua Tipe', 'PDF', 'Word', 'Baru'].map(opt => (
-              <option key={opt}>{opt}</option>
-            ))}
-          </select>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Cari template dokumen..."
+            className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-48"
+          />
         </div>
       </div>
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Template', value: templates.length, icon: '📄', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-          { label: 'Format PDF',     value: pdfCount,         icon: '🔴', iconBg: 'bg-red-100',  iconColor: 'text-red-500' },
-          { label: 'Format Word',    value: wordCount,        icon: '🔵', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-          { label: 'Total Unduhan',  value: totalDownloads,   icon: '⬇️', iconBg: 'bg-green-100',iconColor: 'text-green-600' },
-        ].map(stat => (
-          <div key={stat.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className={`w-10 h-10 ${stat.iconBg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
-              {stat.icon}
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">{stat.label}</p>
-              <p className="text-xl font-bold text-gray-800 leading-tight">{stat.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* ── Section header with view toggle ── */}
       <div className="flex items-center justify-between">
