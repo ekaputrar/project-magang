@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   ChevronRight, 
   Calendar, 
@@ -90,9 +90,9 @@ const AdminSuratTugasCreate = () => {
 
   const nomorLengkap = `SPT/${nomorUrut || '...'} /${bulanRomawi}/${tahun}`;
 
-  // ── Seksi 4: Pejabat list (untuk dropdown) ──────────────────────────────
-  const [pejabatList, setPejabatList] = useState([]);
-  const [pejabatLoading, setPejabatLoading] = useState(true);
+  // pejabatList digunakan oleh komponen PejabatDropdown (definisi masih ada di bawah)
+  const pejabatList = [];
+  const pejabatLoading = false;
 
   // ── Seksi 2: Pegawai ─────────────────────────────────────────────────────
   const [pegawaiList, setPegawaiList] = useState([
@@ -101,6 +101,7 @@ const AdminSuratTugasCreate = () => {
   const [pegawaiSearch, setPegawaiSearch] = useState('');
   const [pegawaiSuggestions, setPegawaiSuggestions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef(null);
   const searchTimeout = useRef(null);
   const [activePegawaiIndex, setActivePegawaiIndex] = useState(null);
@@ -112,21 +113,14 @@ const AdminSuratTugasCreate = () => {
   const [tempatTugas, setTempatTugas] = useState('Kantor Dinas Dukcapil Sidoarjo');
   const [kendaraanDinas, setKendaraanDinas] = useState('');
   const [sumberBiaya, setSumberBiaya] = useState('Dibebankan pada DPA Dinas Dukcapil Sidoarjo');
-
-  // ── Seksi 4: Pengesahan ──────────────────────────────────────────────────
-  const [penandatanganNama, setPenandatanganNama] = useState('');
-  const [penandatanganNip, setPenandatanganNip] = useState('');
-  const [penandatanganJabatan, setPenandatanganJabatan] = useState('Kepala Dinas Dukcapil Kab. Sidoarjo');
-  const [penandatanganPangkat, setPenandatanganPangkat] = useState('');
-  const [mengetahuiNama, setMengetahuiNama] = useState('');
-  const [mengetahuiNip, setMengetahuiNip] = useState('');
-  const [mengetahuiJabatan, setMengetahuiJabatan] = useState('Sekretaris Dinas');
-
-  // Dropdown search states for Seksi 4
-  const [penandatanganSearch, setPenandatanganSearch] = useState('');
-  const [penandatanganOpen, setPenandatanganOpen] = useState(false);
-  const [mengetahuiSearch, setMengetahuiSearch] = useState('');
-  const [mengetahuiOpen, setMengetahuiOpen] = useState(false);
+  // ── Seksi 4: Pengesahan — Pre-fill dari database ──────────────────────────
+  const [penandatanganNama, setPenandatanganNama] = useState('Drs. REDDY KUSUMA, MA');
+  const [penandatanganNip, setPenandatanganNip] = useState('196912311996021001');
+  const [penandatanganJabatan, setPenandatanganJabatan] = useState('Kepala Dinas Kependudukan dan Pencatatan Sipil Kabupaten Sidoarjo');
+  const [penandatanganPangkat, setPenandatanganPangkat] = useState('Pembina Utama Muda / IV-c');
+  const [mengetahuiNama, setMengetahuiNama] = useState('AHMAD IWAN JAUHARI');
+  const [mengetahuiNip, setMengetahuiNip] = useState('197104191990031003');
+  const [mengetahuiJabatan, setMengetahuiJabatan] = useState('Sekretaris Dinas Kependudukan dan Pencatatan Sipil');
   const penandatanganRef = useRef(null);
   const mengetahuiRef = useRef(null);
 
@@ -161,48 +155,13 @@ const AdminSuratTugasCreate = () => {
     generateNomor();
   }, []);
 
-  // ── Fetch daftar pejabat untuk dropdown Seksi 4 ───────────────────────────
-  useEffect(() => {
-    const fetchPejabat = async () => {
-      setPejabatLoading(true);
-      // Coba dari tabel profiles (role admin) terlebih dahulu
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id, full_name, nama, nip, jabatan, pangkat, role')
-        .in('role', ['admin', 'pejabat', 'kepala'])
-        .order('full_name');
-
-      if (profileData && profileData.length > 0) {
-        setPejabatList(profileData.map(p => ({
-          id: p.id,
-          nama: p.full_name || p.nama || '',
-          nip: p.nip || '',
-          jabatan: p.jabatan || '',
-          pangkat: p.pangkat || '',
-        })));
-      } else {
-        // Fallback: data pejabat statis Dukcapil Sidoarjo
-        setPejabatList([
-          { id: '1', nama: 'Siti Rahayu, S.STP., M.Si', nip: '19750620 199603 2 001', jabatan: 'Kepala Dinas Dukcapil Kab. Sidoarjo', pangkat: 'Pembina Utama Muda / IV-c' },
-          { id: '2', nama: 'Drs. Hendra Wijaya, M.M', nip: '19720815 199803 1 004', jabatan: 'Sekretaris Dinas', pangkat: 'Pembina Tk. I / IV-b' },
-          { id: '3', nama: 'Drs. Ahmad Fauzi, M.Si', nip: '19780512 200501 1 003', jabatan: 'Kabid Pelayanan Pendaftaran', pangkat: 'Pembina / IV-a' },
-          { id: '4', nama: 'Ir. Dewi Kusuma, M.T', nip: '19830721 201001 2 007', jabatan: 'Kabid TI dan Jaringan', pangkat: 'Penata Tk. I / III-d' },
-          { id: '5', nama: 'Novi Arisandi, S.H', nip: '19860505 200901 2 004', jabatan: 'Kabid Pencatatan Sipil', pangkat: 'Penata / III-c' },
-        ]);
-      }
-      setPejabatLoading(false);
-    };
-    fetchPejabat();
-  }, []);
 
   // ── Close dropdown on outside click ──────────────────────────────────────
   useEffect(() => {
     const handleClick = (e) => {
-      if (penandatanganRef.current && !penandatanganRef.current.contains(e.target)) {
-        setPenandatanganOpen(false);
-      }
-      if (mengetahuiRef.current && !mengetahuiRef.current.contains(e.target)) {
-        setMengetahuiOpen(false);
+      // Tutup dropdown search pegawai saat klik di luar
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -210,48 +169,84 @@ const AdminSuratTugasCreate = () => {
   }, []);
 
 
-  // ── Pegawai: search from Supabase (pesertas) ─────────────────────────────
-  const searchPegawai = async (q) => {
-    if (!q || q.length < 2) { setPegawaiSuggestions([]); return; }
-    setSearchLoading(true);
-    const { data, error } = await supabase
-      .from('pesertas')
-      .select('id, nama, no_hp, email, asal_instansi, bidang_tujuan')
-      .ilike('nama', `%${q}%`)
-      .limit(6);
-
-    if (!error && data) {
-      setPegawaiSuggestions(data);
+  // ── Pegawai: search from Supabase (tabel pegawai) ────────────────────────
+  const searchPegawai = useCallback(async (q) => {
+    if (!q || q.trim().length < 2) {
+      setPegawaiSuggestions([]);
+      setShowSuggestions(false);
+      return;
     }
-    setSearchLoading(false);
-  };
+    setSearchLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('pegawai')
+        .select('id, nama, nip, pangkat, jabatan, bidang, kedudukan')
+        .ilike('nama', `%${q.trim()}%`)
+        .order('nama')
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching pegawai:', error.message);
+        setPegawaiSuggestions([]);
+      } else {
+        setPegawaiSuggestions(data || []);
+        setShowSuggestions(true);
+      }
+    } catch (err) {
+      console.error('Search pegawai exception:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
 
   const handlePegawaiSearchChange = (e) => {
     const val = e.target.value;
     setPegawaiSearch(val);
+    if (!val || val.trim().length < 2) {
+      setPegawaiSuggestions([]);
+      setShowSuggestions(false);
+    }
     clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => searchPegawai(val), 300);
+    searchTimeout.current = setTimeout(() => searchPegawai(val), 350);
   };
 
+  // Pilih pegawai dari dropdown: isi ke slot yang aktif, atau slot pertama kosong, atau tambah baru
   const selectPegawai = (p) => {
     if (activePegawaiIndex !== null) {
+      // Update slot yang sedang dipilih
       const updated = [...pegawaiList];
       updated[activePegawaiIndex] = {
         ...updated[activePegawaiIndex],
         nama: p.nama || '',
-        nip: p.no_hp || '',
-        jabatan: p.bidang_tujuan || '',
-        pangkat: p.asal_instansi || '',
+        nip: p.nip || '',
+        jabatan: p.jabatan || '',
+        pangkat: p.pangkat || '',
       };
       setPegawaiList(updated);
     } else {
-      setPegawaiList(prev => [
-        ...prev.slice(0, -1),
-        { nama: p.nama || '', nip: p.no_hp || '', jabatan: p.bidang_tujuan || '', pangkat: p.asal_instansi || '' }
-      ]);
+      // Cari slot kosong pertama
+      const emptyIndex = pegawaiList.findIndex(item => !item.nama.trim());
+      if (emptyIndex !== -1) {
+        // Isi slot kosong yang ditemukan
+        const updated = [...pegawaiList];
+        updated[emptyIndex] = {
+          nama: p.nama || '',
+          nip: p.nip || '',
+          jabatan: p.jabatan || '',
+          pangkat: p.pangkat || '',
+        };
+        setPegawaiList(updated);
+      } else {
+        // Semua slot sudah terisi, tambah pegawai baru
+        setPegawaiList(prev => [
+          ...prev,
+          { nama: p.nama || '', nip: p.nip || '', jabatan: p.jabatan || '', pangkat: p.pangkat || '' }
+        ]);
+      }
     }
     setPegawaiSearch('');
     setPegawaiSuggestions([]);
+    setShowSuggestions(false);
     setActivePegawaiIndex(null);
   };
 
@@ -299,6 +294,7 @@ const AdminSuratTugasCreate = () => {
       penandatangan_nama: penandatanganNama,
       penandatangan_nip: penandatanganNip,
       penandatangan_jabatan: penandatanganJabatan,
+      penandatangan_pangkat: penandatanganPangkat,
       mengetahui_nama: mengetahuiNama,
       mengetahui_nip: mengetahuiNip,
       mengetahui_jabatan: mengetahuiJabatan,
@@ -598,48 +594,90 @@ const AdminSuratTugasCreate = () => {
               <div className="p-6 space-y-6">
                 {/* Search Pegawai */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">Cari & Pilih Peserta/Pegawai (opsional)</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    🔍 Cari Pegawai / Mentor dari Database
+                  </label>
                   <div className="relative" ref={searchRef}>
-                    <Search className="w-4 h-4 text-blue-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <Search className="w-4 h-4 text-blue-500 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                     <input
+                      id="pegawai-search-input"
                       type="text"
-                      placeholder="Ketik nama peserta untuk mencari dari database..."
+                      placeholder="Ketik nama pegawai atau mentor (min. 2 huruf)..."
                       value={pegawaiSearch}
                       onChange={handlePegawaiSearchChange}
-                      onFocus={() => setActivePegawaiIndex(null)}
-                      className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      onFocus={() => {
+                        setActivePegawaiIndex(null);
+                        if (pegawaiSearch.trim().length >= 2 && pegawaiSuggestions.length > 0) {
+                          setShowSuggestions(true);
+                        }
+                      }}
+                      autoComplete="off"
+                      className="w-full pl-11 pr-10 py-3 bg-white border-2 border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all shadow-sm"
                     />
-                    {searchLoading && (
-                      <Loader2 className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 animate-spin" />
+                    {searchLoading ? (
+                      <Loader2 className="w-4 h-4 text-blue-400 absolute right-4 top-1/2 -translate-y-1/2 animate-spin" />
+                    ) : pegawaiSearch && (
+                      <button
+                        onClick={() => { setPegawaiSearch(''); setPegawaiSuggestions([]); setShowSuggestions(false); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     )}
-                    {pegawaiSuggestions.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                        {pegawaiSuggestions.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => selectPegawai(p)}
-                            className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
-                          >
-                            <div className="flex items-center">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600 font-bold text-xs">
-                                {p.nama?.[0] || '?'}
+
+                    {/* Dropdown suggestions */}
+                    {showSuggestions && pegawaiSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                          <p className="text-[10px] text-blue-600 font-semibold">{pegawaiSuggestions.length} pegawai ditemukan · klik untuk pilih</p>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto">
+                          {pegawaiSuggestions.map((p) => (
+                            <button
+                              key={p.id}
+                              onMouseDown={(e) => { e.preventDefault(); selectPegawai(p); }}
+                              className="w-full px-4 py-3 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors border-b border-gray-100 last:border-0"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm shadow-sm">
+                                  {p.nama?.[0]?.toUpperCase() || '?'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-gray-800 truncate">{p.nama}</p>
+                                  <p className="text-xs text-gray-500 truncate">{p.jabatan || '—'}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {p.nip && <span className="text-[10px] text-gray-400">NIP: {p.nip}</span>}
+                                    {p.bidang && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium truncate max-w-[140px]">{p.bidang}</span>}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-semibold">{p.kedudukan || 'Pegawai'}</span>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-semibold text-gray-800">{p.nama}</p>
-                                <p className="text-xs text-gray-400">{p.asal_instansi} — {p.bidang_tujuan}</p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pesan tidak ada hasil */}
+                    {showSuggestions && !searchLoading && pegawaiSearch.trim().length >= 2 && pegawaiSuggestions.length === 0 && (
+                      <div className="absolute z-50 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl p-4 text-center">
+                        <p className="text-sm text-gray-400">Tidak ada pegawai ditemukan untuk <strong>{pegawaiSearch}</strong></p>
+                        <p className="text-xs text-gray-400 mt-1">Isi data secara manual di bawah.</p>
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">Atau isi data pegawai secara manual di bawah ini.</p>
+                  <p className="text-[10px] text-gray-400 mt-2">💡 Ketik min. 2 huruf untuk mencari. Atau isi data pegawai secara manual di bawah ini.</p>
                 </div>
 
                 {/* Pegawai Cards */}
                 {pegawaiList.map((pegawai, index) => (
-                  <div key={index} className="border border-gray-200 rounded-xl p-5 relative bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                  <div key={index} className={`border-2 rounded-xl p-5 relative bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all duration-200 ${
+                    activePegawaiIndex === index 
+                      ? 'border-blue-400 shadow-blue-100 shadow-md ring-2 ring-blue-100' 
+                      : pegawai.nama ? 'border-green-200' : 'border-gray-200'
+                  }`}>
                     {pegawaiList.length > 1 && (
                       <button
                         onClick={() => removePegawai(index)}
@@ -648,15 +686,32 @@ const AdminSuratTugasCreate = () => {
                       </button>
                     )}
                     <div className="flex items-center mb-4">
-                      <div className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center text-[10px] font-bold mr-2">{index + 1}</div>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mr-2 ${
+                        activePegawaiIndex === index ? 'bg-blue-500 text-white' : 'bg-[#1e3a8a] text-white'
+                      }`}>{index + 1}</div>
                       <span className="text-xs font-bold text-gray-500 tracking-wider">PEGAWAI {index + 1}</span>
+                      {activePegawaiIndex === index && (
+                        <span className="ml-2 text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold animate-pulse">
+                          ← Sedang dicari
+                        </span>
+                      )}
+                      {pegawai.nama && activePegawaiIndex !== index && (
+                        <span className="ml-2 text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full font-semibold">
+                          ✓ Terisi
+                        </span>
+                      )}
                       <button
                         onClick={() => {
                           setActivePegawaiIndex(index);
                           setPegawaiSearch('');
-                          document.querySelector('input[placeholder*="Ketik nama"]')?.focus();
+                          setPegawaiSuggestions([]);
+                          setShowSuggestions(false);
+                          // Focus ke input search pegawai
+                          setTimeout(() => {
+                            document.getElementById('pegawai-search-input')?.focus();
+                          }, 50);
                         }}
-                        className="ml-auto flex items-center text-[11px] text-blue-500 hover:text-blue-700 font-medium gap-1"
+                        className="ml-auto flex items-center text-[11px] text-blue-500 hover:text-blue-700 font-medium gap-1 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
                       >
                         <Search className="w-3 h-3" /> Cari dari database
                       </button>
@@ -859,84 +914,149 @@ const AdminSuratTugasCreate = () => {
               </div>
 
               <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Penandatangan Utama — Dropdown */}
-                  <PejabatDropdown
-                    label="Penandatangan Utama"
-                    required={true}
-                    description="Kepala Dinas / Pejabat Berwenang"
-                    searchVal={penandatanganSearch}
-                    setSearchVal={setPenandatanganSearch}
-                    isOpen={penandatanganOpen}
-                    setIsOpen={setPenandatanganOpen}
-                    dropRef={penandatanganRef}
-                    onSelect={(p) => {
-                      setPenandatanganNama(p.nama);
-                      setPenandatanganNip(p.nip);
-                      setPenandatanganJabatan(p.jabatan || penandatanganJabatan);
-                      setPenandatanganPangkat(p.pangkat || '');
-                    }}
-                    selectedNama={penandatanganNama}
-                    selectedNip={penandatanganNip}
-                    selectedJabatan={penandatanganJabatan}
-                    selectedPangkat={penandatanganPangkat}
-                    placeholder="Pilih pejabat penandatangan..."
-                  />
 
-                  {/* Mengetahui — Dropdown */}
-                  <PejabatDropdown
-                    label="Mengetahui / Atasan Langsung"
-                    required={false}
-                    description="Sekretaris Dinas (opsional)"
-                    searchVal={mengetahuiSearch}
-                    setSearchVal={setMengetahuiSearch}
-                    isOpen={mengetahuiOpen}
-                    setIsOpen={setMengetahuiOpen}
-                    dropRef={mengetahuiRef}
-                    onSelect={(p) => {
-                      setMengetahuiNama(p.nama);
-                      setMengetahuiNip(p.nip);
-                      setMengetahuiJabatan(p.jabatan || mengetahuiJabatan);
-                    }}
-                    selectedNama={mengetahuiNama}
-                    selectedNip={mengetahuiNip}
-                    selectedJabatan={mengetahuiJabatan}
-                    selectedPangkat=""
-                    placeholder="Pilih pejabat mengetahui..."
-                  />
+                {/* Info banner */}
+                <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-[10px] font-bold">i</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-blue-800">Data Pejabat Terisi Otomatis dari Database</p>
+                    <p className="text-[11px] text-blue-600 mt-0.5">Nama dan NIP sudah diisi sesuai data pegawai Dukcapil Sidoarjo. Anda tetap dapat mengubah jika diperlukan.</p>
+                  </div>
                 </div>
 
-                {/* Jabatan fields (editable, muncul setelah dropdown dipilih) */}
-                {(penandatanganNama || mengetahuiNama) && (
-                  <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100">
-                    {penandatanganNama && (
-                      <div className="space-y-3">
-                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Jabatan Penandatangan</p>
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-1.5">Jabatan</label>
-                          <input value={penandatanganJabatan} onChange={e => setPenandatanganJabatan(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white text-gray-800" />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-1.5">Pangkat / Golongan</label>
-                          <input value={penandatanganPangkat} onChange={e => setPenandatanganPangkat(e.target.value)}
-                            placeholder="Pembina Utama Muda / IV-c"
-                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white text-gray-800" />
-                        </div>
+                <div className="grid grid-cols-2 gap-6">
+
+                  {/* Penandatangan Utama — Kepala Dinas (pre-filled) */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-700 mb-0.5">Penandatangan Utama <span className="text-red-500">*</span></h4>
+                      <p className="text-[10px] text-gray-400">Kepala Dinas / Pejabat Berwenang</p>
+                    </div>
+
+                    {/* Avatar + badge */}
+                    <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow">
+                        R
                       </div>
-                    )}
-                    {mengetahuiNama && (
-                      <div className="space-y-3">
-                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Jabatan Mengetahui</p>
-                        <div>
-                          <label className="block text-[11px] text-gray-500 mb-1.5">Jabatan</label>
-                          <input value={mengetahuiJabatan} onChange={e => setMengetahuiJabatan(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white text-gray-800" />
-                        </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-800 truncate">{penandatanganNama}</p>
+                        <p className="text-[11px] text-gray-500">{penandatanganJabatan}</p>
                       </div>
-                    )}
+                      <span className="flex-shrink-0 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">Kepala Dinas</span>
+                    </div>
+
+                    {/* Input Nama */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">Nama Lengkap <span className="text-red-400">*</span></label>
+                      <input
+                        type="text"
+                        value={penandatanganNama}
+                        onChange={e => setPenandatanganNama(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      />
+                    </div>
+
+                    {/* Input NIP (readonly tapi bisa diedit) */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">NIP</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={penandatanganNip}
+                          onChange={e => setPenandatanganNip(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                        />
+                        {penandatanganNip && (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Jabatan */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">Jabatan</label>
+                      <input
+                        type="text"
+                        value={penandatanganJabatan}
+                        onChange={e => setPenandatanganJabatan(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      />
+                    </div>
+
+                    {/* Pangkat */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">Pangkat / Golongan</label>
+                      <input
+                        type="text"
+                        value={penandatanganPangkat}
+                        onChange={e => setPenandatanganPangkat(e.target.value)}
+                        placeholder="Pembina Utama Muda / IV-c"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Mengetahui — Sekretaris Dinas (pre-filled) */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-700 mb-0.5">Mengetahui / Atasan Langsung</h4>
+                      <p className="text-[10px] text-gray-400">Sekretaris Dinas (opsional)</p>
+                    </div>
+
+                    {/* Avatar + badge */}
+                    <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow">
+                        A
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-800 truncate">{mengetahuiNama}</p>
+                        <p className="text-[11px] text-gray-500">{mengetahuiJabatan}</p>
+                      </div>
+                      <span className="flex-shrink-0 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-semibold">Sekretaris</span>
+                    </div>
+
+                    {/* Input Nama */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={mengetahuiNama}
+                        onChange={e => setMengetahuiNama(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      />
+                    </div>
+
+                    {/* Input NIP */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">NIP</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={mengetahuiNip}
+                          onChange={e => setMengetahuiNip(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                        />
+                        {mengetahuiNip && (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Jabatan */}
+                    <div>
+                      <label className="block text-[11px] text-gray-500 mb-1.5">Jabatan</label>
+                      <input
+                        type="text"
+                        value={mengetahuiJabatan}
+                        onChange={e => setMengetahuiJabatan(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
+
+                </div>
 
                 {/* Tanggal Penandatanganan */}
                 <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
