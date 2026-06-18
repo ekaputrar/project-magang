@@ -338,33 +338,34 @@ const AdminAbsensi = () => {
   return (
     <div className="space-y-6">
       {/* Breadcrumbs & Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center text-sm text-gray-500 mb-2">
             <span className="hover:text-blue-600 cursor-pointer transition-colors">Dashboard</span>
             <ChevronRight className="w-4 h-4 mx-1" />
             <span className="font-semibold text-blue-600">Absensi</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">Monitoring Absensi Peserta</h2>
-          <p className="text-sm text-gray-500">Pantau kehadiran seluruh peserta magang Dukcapil Sidoarjo</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Monitoring Absensi Peserta</h2>
+          <p className="text-xs sm:text-sm text-gray-500">Pantau kehadiran seluruh peserta magang Dukcapil Sidoarjo</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button 
             onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
           >
             <Printer className="w-4 h-4 mr-2" />
-            Cetak Laporan
+            Cetak
           </button>
           <button 
             onClick={handleExportCSV}
-            className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </button>
         </div>
       </div>
+
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -420,15 +421,15 @@ const AdminAbsensi = () => {
       {/* Main Table Container */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex flex-col">
         {/* Table Toolbar */}
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex flex-wrap gap-3 items-center mb-4">
-            <span className="text-sm font-semibold text-gray-600 mr-2 flex items-center">
+        <div className="p-4 border-b border-gray-100 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+            <span className="text-sm font-semibold text-gray-600 mr-2 flex items-center flex-shrink-0">
               <Filter className="w-4 h-4 mr-2" />
               Filter:
             </span>
             
             {/* Tanggal Picker */}
-            <div className="relative w-48">
+            <div className="relative w-full sm:w-48">
               <div className="flex items-center justify-between w-full bg-blue-50 border border-blue-100 text-sm text-blue-600 font-medium rounded-lg py-2 px-3 hover:bg-blue-100 transition-colors pointer-events-none">
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-2" />
@@ -445,10 +446,10 @@ const AdminAbsensi = () => {
             </div>
 
             {/* Departemen Dropdown */}
-            <div className="relative">
+            <div className="relative w-full sm:w-48">
               <button 
                 onClick={() => setIsDepartemenOpen(!isDepartemenOpen)}
-                className="flex items-center justify-between w-48 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center truncate">
                   <Building2 className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
@@ -457,7 +458,7 @@ const AdminAbsensi = () => {
                 <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
               {isDepartemenOpen && (
-                <div className="absolute top-full mt-1 left-0 w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10 overflow-y-auto max-h-60">
+                <div className="absolute top-full mt-1 left-0 w-full sm:w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10 overflow-y-auto max-h-60">
                   {departemens.map(dept => (
                     <button 
                       key={dept}
@@ -475,19 +476,19 @@ const AdminAbsensi = () => {
             </div>
 
             {/* Status Dropdown */}
-            <div className="relative">
+            <div className="relative w-full sm:w-40">
               <button 
                 onClick={() => setIsStatusOpen(!isStatusOpen)}
-                className="flex items-center justify-between w-40 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center">
-                  <CircleDot className="w-4 h-4 mr-2 text-gray-400" />
-                  {selectedStatus}
+                <div className="flex items-center truncate">
+                  <CircleDot className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                  <span className="truncate">{selectedStatus}</span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
               {isStatusOpen && (
-                <div className="absolute top-full mt-1 left-0 w-40 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
                   {['Semua Status', 'Hadir', 'Izin', 'Alpa'].map(st => (
                     <button 
                       key={st}
@@ -505,19 +506,19 @@ const AdminAbsensi = () => {
             </div>
             
             {/* Lokasi Dropdown */}
-            <div className="relative">
+            <div className="relative w-full sm:w-40">
               <button 
                 onClick={() => setIsLokasiOpen(!isLokasiOpen)}
-                className="flex items-center justify-between w-40 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                  {selectedLokasi}
+                <div className="flex items-center truncate">
+                  <MapPin className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                  <span className="truncate">{selectedLokasi}</span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
               {isLokasiOpen && (
-                <div className="absolute top-full mt-1 left-0 w-40 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
                   {['Semua Lokasi', 'WFO', 'WFH'].map(loc => (
                     <button 
                       key={loc}
@@ -546,6 +547,7 @@ const AdminAbsensi = () => {
             />
           </div>
         </div>
+
 
         {/* Data Table */}
         <div className="overflow-x-auto">

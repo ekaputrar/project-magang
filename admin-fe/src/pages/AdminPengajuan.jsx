@@ -1048,7 +1048,7 @@ const AdminPengajuan = () => {
       )}
 
       {/* Breadcrumb & Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center text-sm text-gray-500 mb-2">
             <span className="hover:text-blue-600 cursor-pointer transition-colors">
@@ -1057,10 +1057,10 @@ const AdminPengajuan = () => {
             <ChevronRight className="w-4 h-4 mx-1" />
             <span className="font-semibold text-blue-600">Pengajuan Magang</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
             Pengajuan Magang
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs sm:text-sm text-gray-500">
             Review dan kelola semua permohonan magang yang masuk
           </p>
         </div>
@@ -1089,10 +1089,10 @@ const AdminPengajuan = () => {
       {/* Table Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3 items-center flex-1">
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center flex-1">
             {/* Search */}
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -1107,19 +1107,19 @@ const AdminPengajuan = () => {
             </div>
 
             {/* Filter Status */}
-            <div className="relative">
+            <div className="relative w-full sm:w-44">
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center justify-between w-44 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center">
-                  <Filter className="w-4 h-4 mr-2 text-gray-400" />
-                  {filterStatus}
+                <div className="flex items-center truncate">
+                  <Filter className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                  <span className="truncate">{filterStatus}</span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </button>
               {isFilterOpen && (
-                <div className="absolute top-full mt-1 left-0 w-44 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
                   {['Semua', 'Menunggu', 'Disetujui', 'Ditolak'].map((s) => (
                     <button
                       key={s}
@@ -1142,10 +1142,11 @@ const AdminPengajuan = () => {
             </div>
           </div>
 
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 self-end sm:self-auto">
             {filtered.length} pengajuan ditemukan
           </span>
         </div>
+
 
         {/* Table */}
         <div className="overflow-x-auto">

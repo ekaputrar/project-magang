@@ -272,20 +272,20 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
             Selamat Datang, {adminName}! <span className="inline-block">👋</span>
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs sm:text-sm text-gray-500">
             Berikut adalah ringkasan aktivitas peserta magang hari ini, {todayLabel}.
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => fetchDashboardData(true)}
             disabled={refreshing}
-            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             title="Refresh data"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
@@ -293,14 +293,14 @@ const AdminDashboard = () => {
           </button>
           <button
             onClick={handleExport}
-            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </button>
           <button
             onClick={() => navigate('/admin/pengajuan')}
-            className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-[#0066FF] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4 mr-2" />
             Lihat Pengajuan

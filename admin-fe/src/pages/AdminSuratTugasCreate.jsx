@@ -442,7 +442,7 @@ const AdminSuratTugasCreate = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full font-poppins gap-6">
+    <div className="flex flex-col xl:flex-row h-full font-poppins gap-6">
       
       {/* LEFT PANEL: Form Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -456,30 +456,31 @@ const AdminSuratTugasCreate = () => {
             <ChevronRight className="w-3 h-3 mx-1" />
             <span className="font-semibold text-blue-600">Buat Baru</span>
           </div>
-          <div className="flex items-center">
-            <h2 className="text-2xl font-bold text-gray-800 mr-3">Form Pembuatan Surat Perintah Tugas</h2>
+          <div className="flex items-center flex-wrap gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Form Pembuatan Surat Perintah Tugas</h2>
             <span className="px-2.5 py-1 text-[11px] font-semibold text-green-700 bg-green-100 rounded-full border border-green-200">Baru</span>
           </div>
         </div>
 
         {/* Stepper */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm mb-6 flex justify-between items-center relative overflow-hidden">
-          <div className="absolute top-1/2 left-[10%] right-[10%] h-[2px] bg-gray-100 -translate-y-1/2 z-0"></div>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-200 shadow-sm mb-6 flex overflow-x-auto gap-4 xl:justify-between items-center relative whitespace-nowrap scrollbar-none">
+          <div className="hidden xl:block absolute top-1/2 left-[10%] right-[10%] h-[2px] bg-gray-100 -translate-y-1/2 z-0"></div>
           {[
             { step: 1, label: 'Informasi Dasar', sub: 'Nomor & tanggal' },
             { step: 2, label: 'Detail Pegawai', sub: 'Data penugasan' },
             { step: 3, label: 'Detail Tugas', sub: 'Tujuan & jadwal' },
             { step: 4, label: 'Pengesahan', sub: 'Penandatangan' },
           ].map(({ step, label, sub }) => (
-            <div key={step} className="flex items-center bg-white px-2 z-10 cursor-pointer" onClick={() => setCurrentStep(step)}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all ${getStepStatusClass(step)}`}>{step}</div>
+            <div key={step} className="flex items-center bg-white px-2 z-10 cursor-pointer flex-shrink-0" onClick={() => setCurrentStep(step)}>
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm transition-all ${getStepStatusClass(step)}`}>{step}</div>
               <div className="ml-3">
                 <p className={`text-xs transition-all ${getStepTextClass(step)}`}>{label}</p>
-                <p className="text-[10px] text-gray-400">{sub}</p>
+                <p className="text-[9px] sm:text-[10px] text-gray-400">{sub}</p>
               </div>
             </div>
           ))}
         </div>
+
 
         {/* SECTIONS */}
         <div className="flex-1 overflow-y-auto mb-6 pr-2">
@@ -717,7 +718,7 @@ const AdminSuratTugasCreate = () => {
                       </button>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-[11px] text-gray-500 mb-1.5">Nama Pegawai <span className="text-red-400">*</span></label>
                         <input
@@ -804,7 +805,7 @@ const AdminSuratTugasCreate = () => {
                   ></textarea>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Tanggal Mulai <span className="text-red-500">*</span></label>
                     <div className="relative">
@@ -849,7 +850,7 @@ const AdminSuratTugasCreate = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Tempat Tugas <span className="text-red-500">*</span></label>
                     <div className="relative">
@@ -926,7 +927,7 @@ const AdminSuratTugasCreate = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                   {/* Penandatangan Utama — Kepala Dinas (pre-filled) */}
                   <div className="space-y-4">
@@ -1059,7 +1060,7 @@ const AdminSuratTugasCreate = () => {
                 </div>
 
                 {/* Tanggal Penandatanganan */}
-                <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">Tempat Penandatanganan</label>
                     <div className="relative">
@@ -1145,7 +1146,7 @@ const AdminSuratTugasCreate = () => {
       </div>
 
       {/* RIGHT PANEL: Live Preview */}
-      <div className="w-[420px] flex-shrink-0 flex flex-col gap-6">
+      <div className="hidden xl:flex w-[420px] flex-shrink-0 flex flex-col gap-6">
         
         {/* Live Preview Card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden flex flex-col h-[620px]">

@@ -284,10 +284,10 @@ const AdminPengaturan = () => {
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Navigation Sidebar Cards */}
-        <div className="md:col-span-1 space-y-2">
+        <div className="md:col-span-1 flex flex-row md:flex-col gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none whitespace-nowrap">
           <button 
             onClick={() => setActiveTab('profil')}
-            className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+            className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'profil' 
                 ? 'bg-blue-50 text-blue-600 shadow-[0_4px_12px_rgba(59,130,246,0.08)]' 
                 : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
@@ -299,7 +299,7 @@ const AdminPengaturan = () => {
           
           <button 
             onClick={() => setActiveTab('sistem')}
-            className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+            className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'sistem' 
                 ? 'bg-blue-50 text-blue-600 shadow-[0_4px_12px_rgba(59,130,246,0.08)]' 
                 : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
@@ -311,7 +311,7 @@ const AdminPengaturan = () => {
 
           <button 
             onClick={() => setActiveTab('keamanan')}
-            className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+            className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'keamanan' 
                 ? 'bg-blue-50 text-blue-600 shadow-[0_4px_12px_rgba(59,130,246,0.08)]' 
                 : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
@@ -321,6 +321,7 @@ const AdminPengaturan = () => {
             <span>Keamanan</span>
           </button>
         </div>
+
 
         {/* Content Pane */}
         <div className="md:col-span-3 bg-white rounded-3xl border border-gray-100 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300">

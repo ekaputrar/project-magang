@@ -377,7 +377,7 @@ const EditModal = ({ peserta, onClose, onSave }) => {
           <InputRow label="Email"              icon={Mail}      field="email"         form={form} onChange={set} placeholder="email@contoh.com" type="email" />
           <InputRow label="Asal Instansi *"    icon={Building2} field="asalInstansi"  form={form} onChange={set} placeholder="Universitas / Sekolah asal" />
           <InputRow label="Bidang Tujuan"      icon={MapPin}    field="bidangTujuan"  form={form} onChange={set} placeholder="Bidang yang dituju" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputRow label="Tanggal Mulai"    icon={Calendar}  field="tanggalMulai"  form={form} onChange={set} type="date" />
             <InputRow label="Tanggal Selesai"  icon={Calendar}  field="tanggalSelesai" form={form} onChange={set} type="date" />
           </div>
@@ -501,7 +501,7 @@ const TambahModal = ({ onClose, onSave }) => {
           <InputRow label="Email"            icon={Mail}      field="email"         form={form} onChange={set} placeholder="email@contoh.com" type="email" />
           <InputRow label="Asal Instansi *"  icon={Building2} field="asalInstansi"  form={form} onChange={set} placeholder="Universitas / Sekolah asal" />
           <InputRow label="Bidang Tujuan"    icon={MapPin}    field="bidangTujuan"  form={form} onChange={set} placeholder="Bidang yang dituju" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputRow label="Tanggal Mulai"  icon={Calendar}  field="tanggalMulai"  form={form} onChange={set} type="date" />
             <InputRow label="Tanggal Selesai" icon={Calendar} field="tanggalSelesai" form={form} onChange={set} type="date" />
           </div>
@@ -855,18 +855,18 @@ const AdminPeserta = () => {
       {toast         && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Breadcrumbs & Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center text-sm text-gray-500 mb-2">
             <span className="hover:text-blue-600 cursor-pointer transition-colors">Dashboard</span>
             <ChevronRight className="w-4 h-4 mx-1" />
             <span className="font-semibold text-blue-600">Peserta Magang</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">Manajemen Peserta Magang</h2>
-          <p className="text-sm text-gray-500">Kelola seluruh data peserta magang Dukcapil Sidoarjo</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Manajemen Peserta Magang</h2>
+          <p className="text-xs sm:text-sm text-gray-500">Kelola seluruh data peserta magang Dukcapil Sidoarjo</p>
         </div>
         <button
-          className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           onClick={() => setShowTambah(true)}
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -897,10 +897,10 @@ const AdminPeserta = () => {
       {/* Main Table Container */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex flex-col">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3 items-center flex-1">
+        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center flex-1">
             {/* Search */}
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type="text"
@@ -912,19 +912,19 @@ const AdminPeserta = () => {
             </div>
 
             {/* Filter Status */}
-            <div className="relative">
+            <div className="relative w-full sm:w-40">
               <button
                 onClick={() => { setIsStatusOpen(!isStatusOpen); setIsInstansiOpen(false); }}
-                className="flex items-center justify-between w-40 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center">
-                  <Filter className="w-4 h-4 mr-2 text-gray-400" />
-                  {filterStatus}
+                <div className="flex items-center truncate">
+                  <Filter className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                  <span className="truncate">{filterStatus}</span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </button>
               {isStatusOpen && (
-                <div className="absolute top-full mt-1 left-0 w-40 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
                   {['Semua Status', 'Aktif', 'Pending', 'Selesai'].map(s => (
                     <button
                       key={s}
@@ -937,10 +937,10 @@ const AdminPeserta = () => {
             </div>
 
             {/* Filter Instansi */}
-            <div className="relative">
+            <div className="relative w-full sm:w-48">
               <button
                 onClick={() => { setIsInstansiOpen(!isInstansiOpen); setIsStatusOpen(false); }}
-                className="flex items-center justify-between w-48 bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between w-full bg-white border border-gray-200 text-sm text-gray-600 rounded-lg py-2 px-3 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center truncate">
                   <Building2 className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
@@ -949,7 +949,7 @@ const AdminPeserta = () => {
                 <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </button>
               {isInstansiOpen && (
-                <div className="absolute top-full mt-1 left-0 w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10">
+                <div className="absolute top-full mt-1 left-0 w-full sm:w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-10 overflow-y-auto max-h-60">
                   {['Semua Instansi', ...instansiList].map(inst => (
                     <button
                       key={inst}
@@ -962,9 +962,9 @@ const AdminPeserta = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full md:w-auto">
             <button
-              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
               onClick={() => {
                 const csv = [
                   ['No', 'Nama', 'NIM/NIS', 'Instansi', 'Jurusan', 'Periode', 'Status'],
@@ -980,14 +980,15 @@ const AdminPeserta = () => {
               Export
             </button>
             <button
-              className="flex items-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
               onClick={() => setShowTambah(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Tambah Peserta
+              Tambah
             </button>
           </div>
         </div>
+
 
         {/* Data Table */}
         <div className="overflow-x-auto">

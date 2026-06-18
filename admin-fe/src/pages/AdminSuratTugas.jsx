@@ -21,7 +21,8 @@ import {
   Calendar,
   Clock,
   RefreshCw,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
@@ -240,6 +241,7 @@ const AdminSuratTugas = () => {
   const [suratList, setSuratList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSurat, setActiveSurat] = useState(null);
+  const [showPreviewMobile, setShowPreviewMobile] = useState(false);
 
   // Filter / search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -429,10 +431,10 @@ const AdminSuratTugas = () => {
   }
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] -m-6 bg-[#f8f9fb] font-poppins">
+    <div className="flex h-[calc(100vh-2rem)] -m-6 bg-[#f8f9fb] font-poppins relative">
       
       {/* LEFT PANEL */}
-      <div className="w-[360px] bg-white border-r border-gray-100 flex flex-col h-full flex-shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+      <div className={`w-full lg:w-[360px] bg-white border-r border-gray-100 flex flex-col h-full flex-shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)] ${activeSurat && showPreviewMobile ? 'hidden lg:flex' : 'flex'}`}>
         
         {/* Search & Filter */}
         <div className="p-4 border-b border-gray-100 flex gap-2">
@@ -502,7 +504,10 @@ const AdminSuratTugas = () => {
               filtered.map((surat) => (
                 <div
                   key={surat.id}
-                  onClick={() => setActiveSurat(surat)}
+                  onClick={() => {
+                    setActiveSurat(surat);
+                    setShowPreviewMobile(true);
+                  }}
                   className={`p-4 rounded-xl border transition-all cursor-pointer ${
                     activeSurat?.id === surat.id
                       ? 'border-blue-500 bg-white shadow-sm ring-1 ring-blue-500/20'
@@ -527,49 +532,56 @@ const AdminSuratTugas = () => {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className={`flex-1 flex flex-col h-full overflow-hidden relative ${!activeSurat || !showPreviewMobile ? 'hidden lg:flex' : 'flex'}`}>
         
         {/* Top Actions Bar */}
-        <div className="h-16 px-6 bg-white border-b border-gray-100 flex items-center justify-between flex-shrink-0 z-10 shadow-sm">
-          <div className="flex items-center text-blue-600">
-            <FileText className="w-5 h-5 mr-2" />
-            <span className="font-semibold text-sm">
+        <div className="h-auto min-h-[4rem] px-4 md:px-6 py-3 bg-white border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between flex-shrink-0 z-10 shadow-sm">
+          <div className="flex items-center text-blue-600 min-w-0">
+            <button
+              onClick={() => setShowPreviewMobile(false)}
+              className="p-1.5 -ml-1 mr-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg lg:hidden transition-colors flex-shrink-0"
+              aria-label="Kembali"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <FileText className="w-5 h-5 mr-2 flex-shrink-0" />
+            <span className="font-semibold text-sm truncate">
               {activeSurat ? `Preview: ${activeSurat.nomor_surat}` : 'Pilih surat untuk preview'}
             </span>
             {activeSurat && (
-              <div className="ml-4 pl-4 border-l border-gray-200">
+              <div className="ml-3 pl-3 border-l border-gray-200 flex-shrink-0">
                 {getStatusBadge(activeSurat.status)}
               </div>
             )}
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
             {activeSurat && (
               <>
                 <button
                   onClick={() => setEditSurat(activeSurat)}
-                  className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center shadow-sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Data
+                  className="flex-1 sm:flex-none px-3 py-2 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-sm">
+                  <Edit className="w-4 h-4 mr-1.5" />
+                  Edit
                 </button>
                 <button
                   onClick={() => setDeleteSurat(activeSurat)}
-                  className="px-4 py-2 bg-white border border-red-200 text-red-500 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors flex items-center shadow-sm">
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  className="flex-1 sm:flex-none px-3 py-2 bg-white border border-red-200 text-red-500 text-xs sm:text-sm font-medium rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center shadow-sm">
+                  <Trash2 className="w-4 h-4 mr-1.5" />
                   Hapus
                 </button>
                 <button
                   onClick={() => navigate(`/print-spt/${activeSurat.id}`)}
-                  className="px-4 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
-                  <Printer className="w-4 h-4 mr-2" />
-                  Cetak PDF
+                  className="flex-1 sm:flex-none px-3 py-2 bg-[#0066FF] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm">
+                  <Printer className="w-4 h-4 mr-1.5" />
+                  Cetak
                 </button>
               </>
             )}
             <button
               onClick={() => navigate('/admin/surat-tugas/create')}
-              className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center shadow-sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Buat SPT Baru
+              className="w-full sm:w-auto px-3 py-2 bg-orange-500 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center shadow-sm">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Buat SPT
             </button>
           </div>
         </div>
@@ -583,9 +595,9 @@ const AdminSuratTugas = () => {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-8 pb-32">
+          <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 pb-32">
             {/* A4 Paper */}
-            <div className="max-w-[800px] mx-auto bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200 px-12 py-14 relative min-h-[1000px]">
+            <div className="min-w-[760px] max-w-[800px] mx-auto bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200 px-6 sm:px-12 py-8 sm:py-14 relative min-h-[1000px]">
               
               {/* KOP SURAT */}
               <div className="flex items-center justify-between border-b-2 border-black pb-4 mb-8">
@@ -719,28 +731,28 @@ const AdminSuratTugas = () => {
 
         {/* BOTTOM ACTION BAR */}
         {activeSurat && (
-          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
-            <div className="flex items-center text-sm font-medium text-green-600 bg-green-50 px-4 py-2 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              {activeSurat.status === 'Aktif' ? 'Dokumen telah diverifikasi sistem' : `Status: ${activeSurat.status}`}
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 md:px-6 py-3.5 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-center text-xs sm:text-sm font-medium text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span className="truncate">{activeSurat.status === 'Aktif' ? 'Dokumen telah diverifikasi sistem' : `Status: ${activeSurat.status}`}</span>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex gap-2.5">
               <button
                 onClick={handleShare}
-                className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center shadow-sm">
-                <Share2 className="w-4 h-4 mr-2" />
+                className="flex-1 sm:flex-none px-3 py-2 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-sm">
+                <Share2 className="w-4 h-4 mr-1.5" />
                 Bagikan
               </button>
               <button
                 onClick={() => setEditSurat(activeSurat)}
-                className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center shadow-sm">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Data
+                className="flex-1 sm:flex-none px-3 py-2 bg-white border border-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center shadow-sm">
+                <Edit className="w-4 h-4 mr-1.5" />
+                Edit
               </button>
               <button
                 onClick={() => navigate(`/print-spt/${activeSurat.id}`)}
-                className="px-5 py-2 bg-[#0066FF] text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
-                <Printer className="w-4 h-4 mr-2" />
+                className="flex-1 sm:flex-none px-4 py-2 bg-[#0066FF] text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm">
+                <Printer className="w-4 h-4 mr-1.5" />
                 Cetak PDF
               </button>
             </div>
@@ -759,5 +771,6 @@ const AdminSuratTugas = () => {
     </div>
   );
 };
+
 
 export default AdminSuratTugas;
