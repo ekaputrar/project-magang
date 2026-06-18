@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
 
-const DashboardHeader = ({ title, subtitle, onAbsen }) => {
+const DashboardHeader = ({ title, subtitle, onAbsen, absensiLogs = [] }) => {
   const [now, setNow] = useState(new Date())
   const [notifOpen, setNotifOpen] = useState(false)
-  const [hasNotif] = useState(true)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000)
@@ -18,11 +17,34 @@ const DashboardHeader = ({ title, subtitle, onAbsen }) => {
     })
   }
 
+  const todayStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD local time
+  const todayEntry = absensiLogs?.find(log => log.tanggal === todayStr)
+  const isAbsenToday = !!todayEntry
+
+  // Dynamic notification for today's attendance status
+  const attendanceNotif = isAbsenToday
+    ? {
+        id: 1,
+        msg: todayEntry.status === 'Izin' || todayEntry.status === 'Sakit'
+          ? `Absensi hari ini dicatat sebagai ${todayEntry.status}`
+          : 'Absensi hari ini sudah dicatat',
+        time: todayEntry.check_in ? todayEntry.check_in.slice(0, 5) : '--:--',
+        type: 'success',
+      }
+    : {
+        id: 1,
+        msg: 'Absensi hari ini belum dicatat',
+        time: '08:00',
+        type: 'warning',
+      }
+
   const notifications = [
-    { id: 1, msg: 'Absensi hari ini belum dicatat', time: '08:00', type: 'warning' },
+    attendanceNotif,
     { id: 2, msg: 'Evaluasi bulan April tersedia', time: 'Kemarin', type: 'info' },
     { id: 3, msg: 'Sertifikat magang siap diunduh', time: '2 hari lalu', type: 'success' },
   ]
+
+  const hasNotif = !isAbsenToday
 
   return (
     <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">

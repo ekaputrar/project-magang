@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -26,7 +26,8 @@ import {
   Badge,
 } from 'lucide-react';
 
-// ─── Mock Pengajuan Data ───────────────────────────────────────────────────────
+// ─── Mock Pengajuan Data (Unused) ───────────────────────────────────────────────
+/*
 const initialPengajuan = [
   {
     id: 'PGJ-001',
@@ -163,6 +164,7 @@ const initialPengajuan = [
     catatan: '',
   },
 ];
+*/
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (d) =>
@@ -472,7 +474,33 @@ const DetailModal = ({ pengajuan, onClose, onApprove, onReject }) => {
 // ─── Approve Confirm Modal ─────────────────────────────────────────────────────
 const ApproveModal = ({ pengajuan, onClose, onConfirm }) => {
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState(pengajuan?.email || '');
+  const [emailError, setEmailError] = useState('');
+
   if (!pengajuan) return null;
+
+  const hasValidEmail = !!(pengajuan.email && pengajuan.email.trim() !== '');
+
+  const handleConfirm = () => {
+    if (!hasValidEmail) {
+      if (!email || !email.trim() || !email.includes('@')) {
+        setEmailError('Format email tidak valid.');
+        return;
+      }
+      setLoading(true);
+      setTimeout(() => {
+        onConfirm(pengajuan, email.trim());
+        setLoading(false);
+      }, 800);
+    } else {
+      setLoading(true);
+      setTimeout(() => {
+        onConfirm(pengajuan, pengajuan.email.trim());
+        setLoading(false);
+      }, 800);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
@@ -497,9 +525,34 @@ const ApproveModal = ({ pengajuan, onClose, onConfirm }) => {
             {pengajuan.nama}
           </p>
           <p className="text-xs text-gray-400 mb-1">{pengajuan.asalInstansi}</p>
-          <p className="text-xs text-gray-500 mb-6">
+          <p className="text-xs text-gray-500 mb-4">
             {pengajuan.bidangTujuan} · {hitungDurasi(pengajuan.tanggalMulai, pengajuan.tanggalSelesai)}
           </p>
+
+          {/* Email Input — hanya muncul jika email kosong */}
+          {!hasValidEmail && (
+            <div className="w-full text-left mb-5">
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                Email Akun Magang <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError('');
+                }}
+                placeholder="nama@email.com"
+                className={`w-full px-3.5 py-2 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all ${
+                  emailError ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+                }`}
+              />
+              {emailError && (
+                <p className="text-red-500 text-[10px] mt-1 font-medium">{emailError}</p>
+              )}
+            </div>
+          )}
+
           <div className="p-3 bg-green-50 rounded-xl text-xs text-green-700 text-left w-full mb-6 border border-green-100">
             ✅ Pemohon akan <strong>otomatis masuk</strong> sebagai peserta magang aktif setelah pengajuan disetujui.
           </div>
@@ -512,13 +565,7 @@ const ApproveModal = ({ pengajuan, onClose, onConfirm }) => {
             </button>
             <button
               disabled={loading}
-              onClick={() => {
-                setLoading(true);
-                setTimeout(() => {
-                  onConfirm(pengajuan);
-                  setLoading(false);
-                }, 800);
-              }}
+              onClick={handleConfirm}
               className="flex-1 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {loading ? (
@@ -716,7 +763,7 @@ const AdminPengajuan = () => {
   const showToast = (message, type = 'success') =>
     setToast({ message, type });
 
-  const fetchPengajuan = async (showNotification = false) => {
+  const fetchPengajuan = useCallback(async (showNotification = false) => {
     const { data: dbData, error } = await supabase
       .from('pengajuans')
       .select('*, berkases(*)')
@@ -785,7 +832,7 @@ const AdminPengajuan = () => {
       }
       return mappedData;
     });
-  };
+  }, []);
 
   // ── Load submissions from Supabase on mount and listen to Realtime updates ─
   useEffect(() => {
@@ -806,7 +853,7 @@ const AdminPengajuan = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchPengajuan]);
 
   // ── Filter & Search ──────────────────────────────────────────────────────────
   const filtered = data.filter((row) => {
@@ -825,7 +872,7 @@ const AdminPengajuan = () => {
   const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   // ── Approve Handler ──────────────────────────────────────────────────────────
-  const handleApprove = async (item) => {
+  const handleApprove = async (item, approvedEmail) => {
     const now = new Date().toISOString();
     
     // Generate a secure random password for the participant
@@ -856,7 +903,7 @@ const AdminPengajuan = () => {
           .from('pengajuans')
           .select('email')
           .eq('user_id', newUserId)
-          .neq('email', item.email)
+          .neq('email', approvedEmail)
           .limit(1)
           .maybeSingle();
 
@@ -874,7 +921,7 @@ const AdminPengajuan = () => {
         const { data: existingRow } = await supabase
           .from('pengajuans')
           .select('user_id')
-          .eq('email', item.email)
+          .eq('email', approvedEmail)
           .not('user_id', 'is', null)
           .neq('user_id', adminUserId)
           .limit(1)
@@ -900,7 +947,7 @@ const AdminPengajuan = () => {
         });
         
         const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
-          email: item.email,
+          email: approvedEmail,
           password: generatedPassword,
           options: {
             data: {
@@ -934,7 +981,8 @@ const AdminPengajuan = () => {
       .update({ 
         status: 'Disetujui', 
         tanggal_review: now,
-        user_id: newUserId
+        user_id: newUserId,
+        email: approvedEmail
       })
       .eq('id', item.id);
 
@@ -950,7 +998,7 @@ const AdminPengajuan = () => {
         pengajuan_id: item.id,
         user_id: newUserId,
         nama: item.nama,
-        email: item.email,
+        email: approvedEmail,
         no_hp: item.noHp,
         asal_instansi: item.asalInstansi,
         bidang_tujuan: item.bidangTujuan,
@@ -968,7 +1016,7 @@ const AdminPengajuan = () => {
     
     // Show copy credentials popup
     setCredentials({
-      email: item.email,
+      email: approvedEmail,
       password: generatedPassword,
       nama: item.nama
     });

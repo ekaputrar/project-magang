@@ -155,6 +155,7 @@ const Dashboard = ({ user, onLogout }) => {
         <DashboardHeader
           title="Sistem Informasi Pengelolaan Peserta Magang"
           subtitle="Terintegrasi Dukcapil Sidoarjo"
+          absensiLogs={absensiLogs}
         />
 
         <main className="flex-1 p-5 md:p-6">
