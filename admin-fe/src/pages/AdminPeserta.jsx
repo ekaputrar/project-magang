@@ -638,6 +638,7 @@ const AdminPeserta = () => {
   const [isStatusOpen, setIsStatusOpen]     = useState(false);
   const [isInstansiOpen, setIsInstansiOpen] = useState(false);
   const [currentPage, setCurrentPage]       = useState(1);
+  const [itemsPerPage, setItemsPerPage]     = useState(10);
 
   // Modal states
   const [viewPeserta,   setViewPeserta]   = useState(null);
@@ -759,6 +760,22 @@ const AdminPeserta = () => {
     const matchInstansi = filterInstansi === 'Semua Instansi' || (row.asalInstansi || row.instansi) === filterInstansi;
     return matchSearch && matchStatus && matchInstansi;
   });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [filtered.length, totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterInstansi, itemsPerPage]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
 
   const instansiList = [...new Set(data.map(d => d.asalInstansi || d.instansi))];
 
@@ -997,12 +1014,12 @@ const AdminPeserta = () => {
                     <p className="text-xs mt-1">Coba ubah filter pencarian Anda</p>
                   </td>
                 </tr>
-              ) : filtered.map((row, idx) => (
+              ) : currentItems.map((row, idx) => (
                 <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
                   </td>
-                  <td className="px-2 py-4 text-gray-500 font-medium">{String(idx + 1).padStart(2, '0')}</td>
+                  <td className="px-2 py-4 text-gray-500 font-medium">{String(indexOfFirstItem + idx + 1).padStart(2, '0')}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="mr-3"><Avatar row={row} /></div>
@@ -1061,10 +1078,17 @@ const AdminPeserta = () => {
         <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm">
           <div className="text-gray-500 flex items-center">
             Menampilkan
-            <select className="mx-2 border border-gray-200 rounded-md p-1 focus:outline-none focus:border-blue-300">
-              <option>10</option>
-              <option>20</option>
-              <option>50</option>
+            <select 
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="mx-2 border border-gray-200 rounded-md p-1 focus:outline-none focus:border-blue-300"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
             </select>
             dari <span className="font-semibold text-gray-700 mx-1">{filtered.length}</span> peserta
           </div>
@@ -1072,29 +1096,83 @@ const AdminPeserta = () => {
           <div className="flex items-center space-x-1">
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              disabled={currentPage === 1}
+              className={`p-1.5 rounded-lg transition-colors ${
+                currentPage === 1 
+                  ? 'text-gray-300 cursor-not-allowed' 
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+              }`}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            {[1, 2, 3].map(page => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg font-medium transition-colors ${currentPage === page ? 'bg-[#0066FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
-              >
-                {page}
-              </button>
-            ))}
-            <span className="w-8 h-8 flex items-center justify-center text-gray-400">...</span>
+            {(() => {
+              const buttons = [];
+              const pushButton = (page) => {
+                buttons.push(
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg font-medium transition-colors ${
+                      currentPage === page 
+                        ? 'bg-[#0066FF] text-white shadow-sm' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              };
+
+              if (totalPages <= 5) {
+                for (let i = 1; i <= totalPages; i++) {
+                  pushButton(i);
+                }
+              } else {
+                pushButton(1);
+
+                if (currentPage > 3) {
+                  buttons.push(
+                    <span key="dots-start" className="w-8 h-8 flex items-center justify-center text-gray-400">
+                      ...
+                    </span>
+                  );
+                }
+
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+
+                let adjustStart = start;
+                let adjustEnd = end;
+                if (currentPage <= 3) {
+                  adjustEnd = 4;
+                } else if (currentPage >= totalPages - 2) {
+                  adjustStart = totalPages - 3;
+                }
+
+                for (let i = adjustStart; i <= adjustEnd; i++) {
+                  pushButton(i);
+                }
+
+                if (currentPage < totalPages - 2) {
+                  buttons.push(
+                    <span key="dots-end" className="w-8 h-8 flex items-center justify-center text-gray-400">
+                      ...
+                    </span>
+                  );
+                }
+
+                pushButton(totalPages);
+              }
+              return buttons;
+            })()}
             <button
-              onClick={() => setCurrentPage(5)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg font-medium transition-colors ${currentPage === 5 ? 'bg-[#0066FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-              5
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(5, currentPage + 1))}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className={`p-1.5 rounded-lg transition-colors ${
+                currentPage === totalPages 
+                  ? 'text-gray-300 cursor-not-allowed' 
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+              }`}
             >
               <ChevronRight className="w-5 h-5" />
             </button>

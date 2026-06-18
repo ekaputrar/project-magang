@@ -102,9 +102,16 @@ const Sidebar = ({ user, peserta, activePage, onNavigate, onLogout }) => {
           <div className="flex flex-col items-center text-center">
             <div className="relative mb-3">
               <img
-                src={peserta?.foto_url || avatarImg}
+                src={
+                  peserta?.foto_url
+                    ? (peserta.foto_url.startsWith('data:')
+                        ? peserta.foto_url
+                        : `${peserta.foto_url.split('?')[0]}?t=${Date.now()}`)
+                    : avatarImg
+                }
                 alt={peserta?.nama || user?.name}
                 className="w-16 h-16 rounded-full object-cover border-2 border-white border-opacity-30"
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = avatarImg }}
               />
               <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-400 border-2 border-blue-800 rounded-full"></span>
             </div>

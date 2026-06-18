@@ -98,6 +98,7 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPw, setSavingPw] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [pendingPhotoFile, setPendingPhotoFile] = useState(null)
 
   // ── Alert state ─────────────────────────────────────────────────────────────
   const [profileAlert, setProfileAlert] = useState(false)
@@ -140,7 +141,15 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
       if (error) throw error
 
       setPeserta(data)
-      if (data?.foto_url) setAvatarSrc(data.foto_url)
+      if (data?.foto_url) {
+        // Jika base64 data URL → langsung tampilkan, jika URL biasa → tambahkan cache-buster
+        const url = data.foto_url
+        if (url.startsWith('data:')) {
+          setAvatarSrc(url)
+        } else {
+          setAvatarSrc(url.split('?')[0] + `?t=${Date.now()}`)
+        }
+      }
 
       const filled = {
         nama: data?.nama || user?.user_metadata?.name || '',
@@ -174,33 +183,89 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
   }
 
   // ── Ganti foto ──────────────────────────────────────────────────────────────
-  const handlePhoto = async (e) => {
+  const handlePhoto = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) { setProfileErr('Ukuran foto maksimal 2MB.'); return }
+
+    setProfileErr('')
+    setPendingPhotoFile(file)
 
     // Preview lokal dulu
     const reader = new FileReader()
     reader.onload = (ev) => setAvatarSrc(ev.target.result)
     reader.readAsDataURL(file)
+  }
 
-    if (!peserta?.id) return
+  const handleCancelPhoto = () => {
+    setPendingPhotoFile(null)
+    setAvatarSrc(peserta?.foto_url || avatarImg)
+    setProfileErr('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleSavePhoto = async () => {
+    if (!peserta?.id || !pendingPhotoFile) {
+      console.warn('[handleSavePhoto] Aborted: peserta.id=', peserta?.id, 'pendingPhotoFile=', pendingPhotoFile)
+      return
+    }
+
+    // Validasi ukuran foto
+    if (pendingPhotoFile.size > 2 * 1024 * 1024) {
+      setProfileErr('Ukuran foto maksimal 2MB.')
+      return
+    }
+
     setUploadingPhoto(true)
-    try {
-      const ext = file.name.split('.').pop()
-      const path = `avatars/${peserta.id}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('berkas-pengajuan')
-        .upload(path, file, { upsert: true })
+    setProfileErr('')
 
-      if (!upErr) {
-        const { data: { publicUrl } } = supabase.storage.from('berkas-pengajuan').getPublicUrl(path)
-        setAvatarSrc(publicUrl)
-        await supabase.from('pesertas').update({ foto_url: publicUrl }).eq('id', peserta.id)
-        if (onProfileUpdate) onProfileUpdate()
-      }
+    try {
+      // Kompres dan konversi ke base64 menggunakan canvas
+      const dataUrl = await new Promise((resolve, reject) => {
+        const img = new Image()
+        const objectUrl = URL.createObjectURL(pendingPhotoFile)
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl)
+          // Kompres ke max 400x400 px
+          const MAX = 400
+          let { width, height } = img
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round(height * MAX / width); width = MAX }
+            else { width = Math.round(width * MAX / height); height = MAX }
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          resolve(canvas.toDataURL('image/jpeg', 0.75))
+        }
+        img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Gagal membaca gambar')) }
+        img.src = objectUrl
+      })
+
+      console.log('[handleSavePhoto] Data URL length:', dataUrl.length, 'chars')
+
+      // Simpan base64 ke kolom foto_url di database
+      const { error: dbErr } = await supabase
+        .from('pesertas')
+        .update({ foto_url: dataUrl })
+        .eq('id', peserta.id)
+
+      console.log('[handleSavePhoto] DB update error:', dbErr)
+      if (dbErr) throw dbErr
+
+      // Update UI langsung
+      setAvatarSrc(dataUrl)
+      setPeserta(prev => ({ ...prev, foto_url: dataUrl }))
+      setPendingPhotoFile(null)
+      if (fileRef.current) fileRef.current.value = ''
+      setProfileAlert(true)
+      if (onProfileUpdate) onProfileUpdate()
+
     } catch (err) {
-      console.warn('Upload foto gagal, preview tetap tampil:', err.message)
+      console.error('[handleSavePhoto] ERROR:', err)
+      setProfileErr('Gagal menyimpan foto: ' + (err.message || JSON.stringify(err)))
     } finally {
       setUploadingPhoto(false)
     }
@@ -212,6 +277,24 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
     setProfileErr('')
     setSavingProfile(true)
     try {
+      let finalFotoUrl = peserta.foto_url
+
+      // Jika ada foto baru yang dipilih, unggah terlebih dahulu
+      if (pendingPhotoFile) {
+        const ext = pendingPhotoFile.name.split('.').pop().toLowerCase()
+        const path = `${peserta.id}/avatar.${ext}`
+        const { error: upErr } = await supabase.storage
+          .from('berkas-pengajuan')
+          .upload(path, pendingPhotoFile, { upsert: true })
+
+        if (upErr) throw upErr
+
+        const { data: { publicUrl } } = supabase.storage.from('berkas-pengajuan').getPublicUrl(path)
+        finalFotoUrl = `${publicUrl}?t=${Date.now()}`
+        setAvatarSrc(finalFotoUrl)
+        setPendingPhotoFile(null)
+      }
+
       // Update tabel pesertas
       const { error: upErr } = await supabase
         .from('pesertas')
@@ -222,6 +305,7 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
           nim: form.nim || null,
           alamat: form.alamat || null,
           asal_instansi: form.asal_instansi,
+          foto_url: finalFotoUrl,
         })
         .eq('id', peserta.id)
 
@@ -264,7 +348,7 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
     }
   }
 
-  const hasChanged = origForm && JSON.stringify(form) !== JSON.stringify(origForm)
+  const hasChanged = (origForm && JSON.stringify(form) !== JSON.stringify(origForm)) || !!pendingPhotoFile
   const toggle = (f) => setShowPw(p => ({ ...p, [f]: !p[f] }))
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -303,7 +387,12 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
             <div className="relative flex-shrink-0">
               {loading
                 ? <Sk className="w-20 h-20 rounded-2xl" />
-                : <img src={avatarSrc} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-lg" />
+                : <img
+                    src={avatarSrc}
+                    alt="Foto Profil"
+                    className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-lg"
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = avatarImg }}
+                  />
               }
               <button
                 onClick={() => fileRef.current?.click()}
@@ -344,15 +433,48 @@ const ProfilePage = ({ user, onProfileUpdate }) => {
               )}
             </div>
 
-            {/* Ganti foto btn */}
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploadingPhoto || loading}
-              className="hidden sm:inline-flex items-center gap-2 bg-white border border-gray-200 hover:border-primary-400 hover:bg-blue-50 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-              Ganti Foto <span className="text-gray-400 font-normal">Maks. 2MB</span>
-            </button>
+            {/* Ganti / Simpan foto btn */}
+            {pendingPhotoFile ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelPhoto}
+                  className="inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all shadow-sm"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSavePhoto}
+                  disabled={uploadingPhoto}
+                  className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-60"
+                >
+                  {uploadingPhoto ? (
+                    <>
+                      <svg className="animate-spin w-3.5 h-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Simpan Foto
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploadingPhoto || loading}
+                className="hidden sm:inline-flex items-center gap-2 bg-white border border-gray-200 hover:border-primary-400 hover:bg-blue-50 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                Ganti Foto <span className="text-gray-400 font-normal">Maks. 2MB</span>
+              </button>
+            )}
           </div>
 
           {/* Quick info strip */}

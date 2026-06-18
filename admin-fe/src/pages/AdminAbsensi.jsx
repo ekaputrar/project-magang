@@ -24,8 +24,15 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const AdminAbsensi = () => {
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA')); // YYYY-MM-DD local time
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString()); // YYYY-MM-DD local time
   const [loading, setLoading] = useState(true);
   const [pesertaList, setPesertaList] = useState([]);
   const [absensiList, setAbsensiList] = useState([]);
@@ -194,7 +201,7 @@ const AdminAbsensi = () => {
         status = 'Terlambat';
       }
     } else {
-      const todayStr = new Date().toLocaleDateString('en-CA');
+      const todayStr = getLocalDateString();
       if (selectedDate === todayStr) {
         status = 'Alpa';
         checkIn = 'Belum absen';
@@ -260,9 +267,35 @@ const AdminAbsensi = () => {
   const alpaCount = tableRows.filter(r => r.status === 'Alpa').length;
   const kehadiranPercent = totalPeserta > 0 ? ((hadirCount / totalPeserta) * 100).toFixed(1) : '0.0';
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDepartemen, selectedStatus, selectedLokasi, selectedDate]);
+
+  // Sort: checked-in/active attendance (latest first) at the top, then special status (Izin/Sakit), then Alpa
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const hasA = a.checkIn && a.checkIn !== 'Tidak absen' && a.checkIn !== 'Belum absen';
+    const hasB = b.checkIn && b.checkIn !== 'Tidak absen' && b.checkIn !== 'Belum absen';
+
+    if (hasA && !hasB) return -1;
+    if (!hasA && hasB) return 1;
+
+    if (hasA && hasB) {
+      return b.checkIn.localeCompare(a.checkIn);
+    }
+
+    const isSpecialA = a.status === 'Izin' || a.status === 'Sakit';
+    const isSpecialB = b.status === 'Izin' || b.status === 'Sakit';
+
+    if (isSpecialA && !isSpecialB) return -1;
+    if (!isSpecialA && isSpecialB) return 1;
+
+    return a.name.localeCompare(b.name);
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
-  const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(sortedRows.length / itemsPerPage) || 1;
+  const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Helper formats
   const formatDisplayDate = (dateStr) => {
@@ -273,7 +306,7 @@ const AdminAbsensi = () => {
 
   const handleExportCSV = () => {
     const headers = ['No', 'Nama Peserta', 'Departemen', 'Instansi', 'Tanggal', 'Check-In', 'Check-Out', 'Lokasi', 'Status', 'Keterangan'];
-    const rows = filteredRows.map(r => [
+    const rows = sortedRows.map(r => [
       r.id,
       r.name,
       r.role,
@@ -599,7 +632,7 @@ const AdminAbsensi = () => {
         {/* Pagination */}
         <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm">
           <div className="text-gray-500 flex items-center">
-            Menampilkan <span className="font-semibold text-gray-700 mx-1">{paginatedRows.length}</span> dari <span className="font-semibold text-gray-700 mx-1">{filteredRows.length}</span> entri
+            Menampilkan <span className="font-semibold text-gray-700 mx-1">{paginatedRows.length}</span> dari <span className="font-semibold text-gray-700 mx-1">{sortedRows.length}</span> entri
           </div>
           
           <div className="flex items-center space-x-1">
