@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { BubbleChat } from 'flowise-embed-react'
+import avatarRobot from './assets/avatar_robot.png'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import Features from './components/Features'
@@ -102,6 +104,84 @@ function App() {
         <CTA onLoginClick={() => setPage('login')} onRegisterClick={() => setPage('registration')} />
       </main>
       <Footer />
+      <BubbleChat
+        chatflowid="d02a58be-038d-4815-abbc-8ae458ba710e"
+        apiHost="http://localhost:3000"
+        theme={{
+          button: {
+            backgroundColor: '#1e40af',
+            right: 24,
+            bottom: 24,
+            size: 52,
+            dragAndDrop: true,
+            iconColor: 'white',
+            customIconSrc: avatarRobot,
+            autoWindowOpen: {
+              autoOpen: false,
+            },
+          },
+          tooltip: {
+            showTooltip: true,
+            tooltipMessage: 'Ada yang bisa kami bantu? 👋',
+            tooltipBackgroundColor: '#1e40af',
+            tooltipTextColor: 'white',
+            tooltipFontSize: 14,
+          },
+          chatWindow: {
+            showTitle: true,
+            showAgentMessages: true,
+            title: 'Asisten Dukcapil',
+            titleAvatarSrc: avatarRobot,
+            welcomeMessage: 'Selamat datang! Saya asisten virtual Dinas Kependudukan dan Pencatatan Sipil. Ada yang bisa saya bantu? 😊',
+            errorMessage: 'Maaf, terjadi kesalahan. Silakan coba lagi.',
+            backgroundColor: '#ffffff',
+            height: 580,
+            width: 380,
+            fontSize: 14,
+            starterPrompts: [
+              'Bagaimana cara mengurus KTP?',
+              'Syarat membuat akta kelahiran?',
+              'Cara daftar magang di Dukcapil?',
+            ],
+            starterPromptFontSize: 13,
+            clearChatOnReload: false,
+            sourceDocsTitle: 'Sumber:',
+            renderHTML: true,
+            botMessage: {
+              backgroundColor: '#eff6ff',
+              textColor: '#1e293b',
+              showAvatar: true,
+              avatarSrc: avatarRobot,
+            },
+            userMessage: {
+              backgroundColor: '#1e40af',
+              textColor: '#ffffff',
+              showAvatar: true,
+              avatarSrc: 'https://www.svgrepo.com/show/524211/user-circle.svg',
+            },
+            textInput: {
+              placeholder: 'Ketik pertanyaan Anda...',
+              backgroundColor: '#f8fafc',
+              textColor: '#1e293b',
+              sendButtonColor: '#1e40af',
+              maxChars: 500,
+              maxCharsWarningMessage: 'Maksimal 500 karakter',
+              autoFocus: true,
+              sendMessageSound: false,
+              receiveMessageSound: false,
+            },
+            feedback: {
+              color: '#1e40af',
+            },
+            footer: {
+              textColor: '#94a3b8',
+              text: 'Powered by',
+              company: 'Dukcapil AI',
+              companyLink: '#',
+            },
+          },
+        }}
+      />
     </div>
   )
 }
