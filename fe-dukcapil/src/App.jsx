@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import Cookies from 'js-cookie'
 import { BubbleChat } from 'flowise-embed-react'
 import avatarRobot from './assets/avatar_robot.png'
 import Navbar from './components/Navbar'
@@ -16,17 +17,42 @@ import Dashboard from './pages/Dashboard'
 import Registration from './pages/Registration'
 import './index.css'
 
+// Cookie key & expiry
+const COOKIE_KEY = 'dukcapil_user'
+const COOKIE_EXPIRY_DAYS = 1 // maksimal 1 hari
+
 // Pages: 'landing' | 'login' | 'dashboard' | 'forgot-password' | 'verify-code' | 'new-password' | 'register'
 function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState(null)
 
+  // Cek cookie saat pertama kali app dimuat
+  useEffect(() => {
+    const savedUser = Cookies.get(COOKIE_KEY)
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser)
+        setUser(parsedUser)
+        setPage('dashboard')
+      } catch {
+        Cookies.remove(COOKIE_KEY)
+      }
+    }
+  }, [])
+
   const handleLogin = (userData) => {
+    // Simpan user ke cookie dengan expiry 1 hari
+    Cookies.set(COOKIE_KEY, JSON.stringify(userData), {
+      expires: COOKIE_EXPIRY_DAYS,
+      sameSite: 'Strict',
+    })
     setUser(userData)
     setPage('dashboard')
   }
 
   const handleLogout = () => {
+    // Hapus cookie saat logout
+    Cookies.remove(COOKIE_KEY)
     setUser(null)
     setPage('landing')
   }
@@ -105,8 +131,8 @@ function App() {
       </main>
       <Footer />
       <BubbleChat
-        chatflowid="d02a58be-038d-4815-abbc-8ae458ba710e"
-        apiHost="http://localhost:3000"
+        chatflowid="26f1a3a3-357d-4373-a02a-19b47d9d3301"
+        apiHost="https://flowisenew-production.up.railway.app"
         theme={{
           button: {
             backgroundColor: '#1e40af',
