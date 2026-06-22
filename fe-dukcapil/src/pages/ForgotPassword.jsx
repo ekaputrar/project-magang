@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import lambangImg from '../assets/LambangSidoarjo.png'
 
 const ForgotPassword = ({ onBackToLogin, onSubmitSuccess }) => {
   const [email, setEmail] = useState('')
@@ -37,7 +38,7 @@ const ForgotPassword = ({ onBackToLogin, onSubmitSuccess }) => {
         <div className="w-full max-w-[360px] bg-white rounded-[32px] shadow-[0_15px_30px_rgba(0,0,0,0.08)] p-10 flex flex-col items-center justify-center border border-gray-100/50">
           {/* Logo Crest */}
           <img
-            src="src/assets/LambangSidoarjo.png"
+            src={lambangImg}
             alt="Lambang Kabupaten Sidoarjo"
             className="w-36 h-36 object-contain mb-8 select-none pointer-events-none transform transition-transform hover:scale-105 duration-500"
           />

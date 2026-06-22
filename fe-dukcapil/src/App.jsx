@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Cookies from 'js-cookie'
 import { BubbleChat } from 'flowise-embed-react'
 import avatarRobot from './assets/avatar_robot.png'
+import userCircle from './assets/usercircle.svg'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import Features from './components/Features'
@@ -183,7 +184,7 @@ function App() {
               backgroundColor: '#1e40af',
               textColor: '#ffffff',
               showAvatar: true,
-              avatarSrc: '../src/assets/usercircle.svg',
+              avatarSrc: userCircle,
             },
             textInput: {
               placeholder: 'Ketik pertanyaan Anda...',
