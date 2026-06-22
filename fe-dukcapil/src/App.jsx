@@ -183,7 +183,7 @@ function App() {
               backgroundColor: '#1e40af',
               textColor: '#ffffff',
               showAvatar: true,
-              avatarSrc: 'https://www.svgrepo.com/show/524211/user-circle.svg',
+              avatarSrc: '../src/assets/usercircle.svg',
             },
             textInput: {
               placeholder: 'Ketik pertanyaan Anda...',

@@ -34,9 +34,9 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
       return
     }
 
-    onLogin({ 
-      name: data.user?.user_metadata?.name || data.user?.email, 
-      role: 'Peserta Magang', 
+    onLogin({
+      name: data.user?.user_metadata?.name || data.user?.email,
+      role: 'Peserta Magang',
       id: data.user?.id,
       email: data.user?.email
     })
@@ -47,7 +47,7 @@ const Login = ({ onLogin, onBack, onForgotPassword, onRegister }) => {
 
       {/* LEFT SIDE: Sidoarjo Card Logo on Light Gray Background (Hidden on mobile) */}
       <div className="hidden md:flex md:w-[50%] lg:w-[55%] h-screen bg-[#e2e8f0] items-center justify-center relative p-8">
-        
+
         {/* Centered Card */}
         <div className="w-full max-w-[360px] bg-white rounded-[32px] shadow-[0_15px_30px_rgba(0,0,0,0.08)] p-10 flex flex-col items-center justify-center border border-gray-100/50">
           {/* Logo Crest */}
